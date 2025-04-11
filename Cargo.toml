@@ -1,0 +1,18 @@
+[package]
+name = "PQC_kyber"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pqcrypto-kyber = "0.7.9"
+pqcrypto-traits = "0.3.5"  # Nowa zależność
+anyhow = "1.0"
+rand = "0.8.5"
+rsa = { version = "0.9.6", features = ["serde", "pem"] }  # Nowa wersja z obsługą PEM
+pkcs8 = "0.10" # Stabilna wersja
+rand_core = "0.6.4"
+criterion = "0.4"
+
+[[bench]]
+name = "benchmarks"
+harness = false
