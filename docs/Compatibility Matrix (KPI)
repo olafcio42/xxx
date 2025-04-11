@@ -1,0 +1,6 @@
+Compatibility Matrix (KPI)
+Komponent	Obsługa PQC	Wersja/Algorytm	Uwagi
+OpenSSL	Tak	Kyber (OQS fork)	Wymaga kompilacji z OQS
+HSM Model X	Nie	–	Wymiana na Model Y
+Aplikacja Finansowa A	Częściowo	Hybryda ECDH + Kyber	Wymaga aktualizacji API
+PKI (Active Directory)	Nie	–	Migracja do hybrydowych certyfikatów

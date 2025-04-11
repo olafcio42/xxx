@@ -1,3 +1,5 @@
+mod tls;
+
 use anyhow::Result;
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::SharedSecret;
@@ -19,6 +21,10 @@ fn main() -> Result<()> {
         "Sekrety nie są identyczne!"
     );
 
-    println!("[SUKCES] Kyber: Operacja zakończona poprawnie.");
+
+
+
+
+    println!("[SUKCES] Wszystkie testy zakończone pomyślnie!");
     Ok(())
 }

@@ -8,7 +8,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "criterion",
- "pkcs8",
  "pqcrypto-kyber",
  "pqcrypto-traits",
  "rand",
