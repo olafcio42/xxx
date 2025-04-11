@@ -9,15 +9,15 @@
 
 
 
-Kluczowe wnioski
+    Kyber vs RSA:Key Findings
 
     Kyber vs RSA:
 
-        Generacja kluczy Kyber jest ~2000x szybsza niż RSA.
+        Key Generation: Kyber is ~2000x faster than RSA.
 
-        Szyfrowanie Kyber jest 2x szybsze niż RSA.
+        Encryption: Kyber is 2x faster than RSA.
 
-        Deszyfrowanie Kyber jest 15x szybsze niż RSA.
+        Decryption: Kyber is 15x faster than RSA.
 
-    Poprawa wydajności RSA Encrypt:
-    W porównaniu z poprzednimi wynikami, czas szyfrowania RSA zmniejszył się o ~2%.
+    RSA Encryption Performance Improvement:
+    Compared to previous benchmarks, RSA encryption time has been reduced by ~2%.
