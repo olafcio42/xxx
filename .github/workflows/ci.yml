@@ -1,0 +1,22 @@
+name: Rust CI  # To jest nazwa, która będzie widoczna na GitHubie
+
+on:  # Tu określamy, kiedy ma się uruchamiać
+  push:  # Gdy wysyłasz kod (robisz push)
+    branches: [ main ]  # Na gałęzi main
+  pull_request:  # Lub gdy ktoś robi pull request
+    branches: [ main ]
+
+jobs:  # Lista zadań do wykonania
+  test:  # Pierwsze zadanie - testowanie
+    runs-on: ubuntu-latest  # Używamy Ubuntu do testów
+    steps:  # Kroki do wykonania
+      - uses: actions/checkout@v3  # Pobierz kod
+
+      - name: Install Rust  # Zainstaluj Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Run tests  # Uruchom testy
+        run: cargo test

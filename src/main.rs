@@ -208,3 +208,12 @@ mod tests {
         assert!(!constant_time_eq(&a, &c));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn prosty_test() {
+        // Tu będzie twój test
+        assert_eq!(2 + 2, 4);  // Przykład prostego testu
+    }
+}
