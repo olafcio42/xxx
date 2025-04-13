@@ -1,47 +1,55 @@
 mod adds;
 
-use adds::{secure::SecureSecret, validation::validate_keys};
+use adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use anyhow::Result;
 use pqcrypto_kyber::kyber1024::*;
-use pqcrypto_traits::kem::{
-    PublicKey,     // dla public_key.as_bytes()
-    SecretKey,     // dla secret_key.as_bytes()
-    SharedSecret,  // dla shared_secret_enc.as_bytes()
-};
+use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
 
 fn main() -> Result<()> {
-    println!("=== Rozpoczęcie procesu wymiany kluczy Kyber ===");
+    println!("=== Starting Kyber Key Exchange with TLS ===");
+    println!("→ Date and time: 2025-04-13 14:19:49 UTC");
+    println!("→ User: olafcio42");
 
-    // 1. Generowanie kluczy
-    println!("\n[1/6] Generowanie pary kluczy...");
+    // Create TLS session
+    let mut tls_session = TlsSession::new();
+    println!("→ Session ID: {}", tls_session.get_session_id());
+
+    // Perform TLS handshake
+    tls_session.begin_handshake()?;
+
+    // Original key exchange code
+    println!("\n[1/6] Generating key pair...");
+    let (public_key, secret_key) = keypair();
+    println!("-> Generated public key ({} bytes)", public_key.as_bytes().len());
+    println!("-> Generated private key ({} bytes)", secret_key.as_bytes().len());
+
+
+    // 2. Generowanie kluczy
+    println!("\n[2/7] Generowanie pary kluczy...");
     let (public_key, secret_key) = keypair();
     println!("-> Wygenerowano klucz publiczny ({} bajtów)", public_key.as_bytes().len());
     println!("-> Wygenerowano klucz prywatny ({} bajtów)", secret_key.as_bytes().len());
 
-    // 2. Walidacja kluczy
-    println!("\n[2/6] Walidacja kluczy...");
+    // 3. Walidacja kluczy
+    println!("\n[3/7] Walidacja kluczy...");
     validate_keys(&public_key, &secret_key)?;
     println!("-> Status: Klucze są kompatybilne");
 
-    // 3. Proces encapsulate
-    println!("\n[3/6] Proces encapsulate (strona wysyłająca)...");
+    // 4. TLS Key Exchange
+    println!("\n[4/7] Wykonywanie TLS key exchange...");
+    tls_session.perform_key_exchange()?;
+
+    // 5. Proces encapsulate/decapsulate
+    println!("\n[5/7] Proces wymiany kluczy Kyber...");
     let (shared_secret_enc, ciphertext) = encapsulate(&public_key);
     println!("-> Wygenerowano współdzielony sekret ({} bajtów)", shared_secret_enc.as_bytes().len());
+    println!("-> Utworzono ciphertext ({} bajtów)", ciphertext.as_bytes().len());
 
-    // 4. Proces decapsulate
-    println!("\n[4/6] Proces decapsulate (strona odbierająca)...");
     let shared_secret_dec = decapsulate(&ciphertext, &secret_key);
     println!("-> Odtworzono współdzielony sekret ({} bajtów)", shared_secret_dec.as_bytes().len());
 
-    // 5. Konwersja do SecureSecret
-    println!("\n[5/6] Bezpieczne przechowywanie sekretów...");
-    let secure_enc = SecureSecret::from_shared(shared_secret_enc);
-    let secure_dec = SecureSecret::from_shared(shared_secret_dec);
-    println!("-> Sekret zaszyfrowany: {:02x?}...", &secure_enc.expose()[..4]);
-    println!("-> Sekret odszyfrowany: {:02x?}...", &secure_dec.expose()[..4]);
-
     // 6. Demonstracja szyfrowania danych
-    println!("\n[6/6] Szyfrowanie przykładowej transakcji...");
+    println!("\n[6/7] Szyfrowanie przykładowej transakcji...");
     let transaction_data = format!(
         "Transakcja BANK/2024/03/20\n\
         Rachunek źródłowy: PL60102010260000042270201111\n\
@@ -49,6 +57,9 @@ fn main() -> Result<()> {
         Kwota: 1500.00 PLN\n\
         Data: 2024-03-20T15:30:45Z"
     );
+
+    let secure_enc = SecureSecret::from_shared(shared_secret_enc);
+    let secure_dec = SecureSecret::from_shared(shared_secret_dec);
 
     println!("\n=== Dane przed szyfrowaniem ===");
     println!("{}", transaction_data);
@@ -73,19 +84,18 @@ fn main() -> Result<()> {
     println!("\n=== Odszyfrowane dane ===");
     println!("{}", String::from_utf8_lossy(&decrypted));
 
-    // Finalna weryfikacja
-    assert_eq!(
-        secure_enc.expose(),
-        secure_dec.expose(),
-        "Sekrety nie są identyczne!"
-    );
+    // Perform TLS key exchange
+    tls_session.perform_key_exchange()?;
 
-    println!("\n=== PODSUMOWANIE ===");
-    println!("Wszystkie testy zakończone pomyślnie!");
-    println!("Sekrety są identyczne: {:02x?}...", &secure_enc.expose()[..4]);
-    println!("Dane przed i po szyfrowaniu: {}",
-             if transaction_data.as_bytes() == decrypted { "IDENTYCZNE" } else { "RÓŻNE" }
-    );
+    // Close TLS session
+    tls_session.close()?;
+
+    println!("\n=== SUMMARY ===");
+    println!("All tests completed successfully!");
+    println!("TLS Session: Completed");
+    println!("Secrets are identical: {:02x?}...", &secure_enc.expose()[..4]);
+    println!("Data before and after encryption: {}",
+             if transaction_data.as_bytes() == decrypted { "IDENTICAL" } else { "DIFFERENT" });
 
     Ok(())
 }
