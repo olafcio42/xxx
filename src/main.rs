@@ -2,10 +2,10 @@ use anyhow::{Context, Result};
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{PublicKey, SecretKey, SharedSecret, Ciphertext};
 use rand::{rngs::OsRng, RngCore};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH, Instant};
 
 /// Struktura przechowująca pary kluczy Kyber
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct KyberKeyPair {
     public_key: Vec<u8>,
     secret_key: Vec<u8>,
@@ -16,6 +16,58 @@ struct KyberKeyPair {
 struct EncapsulationResult {
     shared_secret: Vec<u8>,
     ciphertext: Vec<u8>,
+}
+
+/// Struktura przechowująca statystyki operacji
+#[derive(Debug, Default)]
+struct OperationStats {
+    operation_time: std::time::Duration,
+    success_count: u32,
+    error_count: u32,
+}
+
+/// Struktura reprezentująca sesję Kyber
+#[derive(Debug)]
+struct KyberSession {
+    id: String,
+    created_at: SystemTime,
+    keypair: Option<KyberKeyPair>,
+    stats: OperationStats,
+}
+
+impl KyberSession {
+    fn new() -> Self {
+        Self {
+            id: format!("SESSION_{}", SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()),
+            created_at: SystemTime::now(),
+            keypair: None,
+            stats: OperationStats::default(),
+        }
+    }
+
+    fn start_operation(&mut self) -> Instant {
+        Instant::now()
+    }
+
+    fn end_operation(&mut self, start_time: Instant, success: bool) {
+        self.stats.operation_time += start_time.elapsed();
+        if success {
+            self.stats.success_count += 1;
+        } else {
+            self.stats.error_count += 1;
+        }
+    }
+
+    fn print_stats(&self) {
+        println!("\n[📊 Statystyki sesji]");
+        println!("→ ID sesji: {}", self.id);
+        println!("→ Czas trwania: {:?}", self.stats.operation_time);
+        println!("→ Udane operacje: {}", self.stats.success_count);
+        println!("→ Błędy: {}", self.stats.error_count);
+    }
 }
 
 /// Generuje bezpieczną parę kluczy Kyber z dodatkową entropią
@@ -134,31 +186,75 @@ fn secure_clear(data: &mut [u8]) {
     }
 }
 
+/// Funkcja demonstrująca różne scenariusze użycia
+fn run_demo_scenarios(session: &mut KyberSession) -> Result<()> {
+    println!("\n[🎮 Scenariusze demonstracyjne]");
+
+    // Scenariusz 1: Podstawowa wymiana kluczy
+    println!("\n📝 Scenariusz 1: Podstawowa wymiana kluczy");
+    let start = session.start_operation();
+
+    let keypair = generate_secure_keypair()?;
+    let encap_result = secure_encapsulate(&keypair.public_key)?;
+    let shared_secret = secure_decapsulate(&encap_result.ciphertext, &keypair.secret_key)?;
+
+    session.end_operation(start, true);
+
+    // Scenariusz 2: Próba dekapsulacji z nieprawidłowym kluczem
+    println!("\n📝 Scenariusz 2: Próba dekapsulacji z nieprawidłowym kluczem");
+    let start = session.start_operation();
+
+    let invalid_key = vec![0u8; keypair.secret_key.len()];
+    let result = secure_decapsulate(&encap_result.ciphertext, &invalid_key);
+
+    match result {
+        Ok(_) => println!("❌ Nieoczekiwany sukces z nieprawidłowym kluczem!"),
+        Err(ref e) => println!("✅ Poprawnie wykryto błąd: {}", e),
+    }
+
+    session.end_operation(start, result.is_err());
+
+    // Scenariusz 3: Test wydajności
+    println!("\n📝 Scenariusz 3: Test wydajności");
+    let start = session.start_operation();
+
+    for i in 1..=3 {
+        println!("\n→ Iteracja {}/3", i);
+        let test_keypair = generate_secure_keypair()?;
+        let test_encap = secure_encapsulate(&test_keypair.public_key)?;
+        let _ = secure_decapsulate(&test_encap.ciphertext, &test_keypair.secret_key)?;
+    }
+
+    session.end_operation(start, true);
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
-    println!("🚀 Rozpoczynam demonstrację wymiany kluczy Kyber");
-    println!("→ Data i czas: 2025-04-13 10:59:25 UTC");
+    let mut session = KyberSession::new();
+
+    println!("\n🚀 Rozpoczynam demonstrację wymiany kluczy Kyber");
+    println!("→ Data i czas: 2025-04-13 11:23:03 UTC");
     println!("→ Użytkownik: olafcio42");
+    println!("→ ID sesji: {}", session.id);
     println!("→ Wersja Kyber: 1024 (najwyższy poziom bezpieczeństwa)");
 
-    // Generowanie pary kluczy
-    let mut keypair = generate_secure_keypair()
-        .context("Failed to generate keypair")?;
+    // Podstawowa demonstracja
+    let start = session.start_operation();
+
+    let mut keypair = generate_secure_keypair()?;
+    session.keypair = Some(keypair.clone());
     print_hex_preview(&keypair.public_key, "Podgląd klucza publicznego");
     print_hex_preview(&keypair.secret_key, "Podgląd klucza prywatnego");
 
-    // Enkapsulacja
-    let mut encap_result = secure_encapsulate(&keypair.public_key)
-        .context("Failed to perform encapsulation")?;
+    let mut encap_result = secure_encapsulate(&keypair.public_key)?;
     print_hex_preview(&encap_result.shared_secret, "Podgląd sekretu (strona A)");
     print_hex_preview(&encap_result.ciphertext, "Podgląd szyfrogramu");
 
-    // Dekapsulacja
-    let mut shared_secret_dec = secure_decapsulate(&encap_result.ciphertext, &keypair.secret_key)
-        .context("Failed to perform decapsulation")?;
+    let mut shared_secret_dec = secure_decapsulate(&encap_result.ciphertext, &keypair.secret_key)?;
     print_hex_preview(&shared_secret_dec, "Podgląd sekretu (strona B)");
 
     println!("\n[🔍 Weryfikacja]");
-    // Weryfikacja w czasie stałym
     if constant_time_eq(&encap_result.shared_secret, &shared_secret_dec) {
         println!("✅ SUKCES: Sekrety są identyczne!");
         println!("→ Bezpieczny kanał został ustanowiony");
@@ -167,12 +263,19 @@ fn main() -> Result<()> {
         return Err(anyhow::anyhow!("Shared secrets do not match"));
     }
 
+    session.end_operation(start, true);
+
+    // Uruchom dodatkowe scenariusze
+    run_demo_scenarios(&mut session)?;
+
     println!("\n[🧹 Czyszczenie]");
-    // Czyszczenie wrażliwych danych
     secure_clear(&mut keypair.secret_key);
     secure_clear(&mut encap_result.shared_secret);
     secure_clear(&mut shared_secret_dec);
     println!("✓ Wyczyszczono wrażliwe dane z pamięci");
+
+    // Wyświetl końcowe statystyki
+    session.print_stats();
 
     println!("\n🏁 Operacja zakończona sukcesem!");
     Ok(())
@@ -207,13 +310,39 @@ mod tests {
         assert!(constant_time_eq(&a, &b));
         assert!(!constant_time_eq(&a, &c));
     }
-}
 
-#[cfg(test)]
-mod tests {
     #[test]
-    fn prosty_test() {
-        // Tu będzie twój test
-        assert_eq!(2 + 2, 4);  // Przykład prostego testu
+    fn test_session_management() {
+        let session = KyberSession::new();
+        assert!(!session.id.is_empty());
+        assert!(session.stats.success_count == 0);
+        assert!(session.stats.error_count == 0);
+    }
+
+    #[test]
+    fn test_invalid_key_handling() -> Result<()> {
+        let keypair = generate_secure_keypair()?;
+        let encap_result = secure_encapsulate(&keypair.public_key)?;
+
+        let invalid_key = vec![0u8; keypair.secret_key.len()];
+        let result = secure_decapsulate(&encap_result.ciphertext, &invalid_key);
+
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_key_lengths() -> Result<()> {
+        let keypair = generate_secure_keypair()?;
+        assert_eq!(keypair.public_key.len(), 1568); // Kyber1024 public key length
+        assert_eq!(keypair.secret_key.len(), 3168); // Kyber1024 secret key length
+        Ok(())
+    }
+
+    #[test]
+    fn test_secure_clear() {
+        let mut sensitive_data = vec![1u8, 2u8, 3u8];
+        secure_clear(&mut sensitive_data);
+        assert!(sensitive_data.iter().all(|&x| x == 0));
     }
 }
