@@ -243,12 +243,5 @@ mod tests {
         fn as_bytes(&self) -> &[u8] {
             &self.0
         }
-
-        fn from_bytes(bytes: &[u8]) -> pqcrypto_traits::Result<Self>
-        where
-            Self: Sized + Clone + Copy
-        {
-            todo!()
-        }
     }
 }
