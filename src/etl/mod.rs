@@ -1,5 +1,9 @@
-pub mod pipeline;
-pub mod metrics;
 pub mod transaction;
 pub mod batch;
-mod etl_tests;
+pub mod metrics;
+pub mod pipeline;
+
+pub use pipeline::ETLPipeline;
+pub use transaction::Transaction;
+pub use metrics::BatchMetrics;
+pub use batch::TransactionBatch;
