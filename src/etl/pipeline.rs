@@ -9,6 +9,11 @@ use anyhow::Result;
 use std::time::Instant;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
+use chrono::Utc;
+
+fn get_formatted_timestamp() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
 
 pub struct ETLPipeline {
     batch_size: usize,
@@ -31,14 +36,14 @@ impl ETLPipeline {
 
     pub async fn process_transactions(&mut self, transactions: Vec<Transaction>) -> Result<BatchMetrics> {
         println!("\n[🚀 Starting ETL Pipeline]");
-        println!("→ Time: 2025-04-26 22:10:31");
+        println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Total transactions to process: {}", transactions.len());
 
         let start = Instant::now();
         let (tx, mut rx) = mpsc::channel(self.batch_size);
         let mut metrics = BatchMetrics::default();
-        metrics.start_time = Some(chrono::Utc::now());
+        metrics.start_time = Some(Utc::now());
 
         // Process transactions in parallel using channels with increased buffer
         let tx = Arc::new(tx);
@@ -98,13 +103,13 @@ impl ETLPipeline {
             start.elapsed()
         ));
 
-        metrics.end_time = Some(chrono::Utc::now());
+        metrics.end_time = Some(Utc::now());
         metrics.processing_duration = start.elapsed();
         metrics.total_transactions = transactions.len();
         metrics.total_batches = (transactions.len() + self.batch_size - 1) / self.batch_size;
 
         println!("\n[✅ ETL Pipeline Results]");
-        println!("→ Time: 2025-04-26 22:10:31");
+        println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Total processed: {}", self.processed_count);
         println!("→ Total failed: {}", self.failed_count);

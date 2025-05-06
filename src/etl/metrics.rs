@@ -1,6 +1,10 @@
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 
+fn get_formatted_timestamp() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct BatchMetrics {
     pub total_transactions: usize,
@@ -32,7 +36,7 @@ impl BatchMetrics {
         }
 
         println!("\n[📊 Batch Metrics Update]");
-        println!("→ Time: 2025-04-26 21:38:29");
+        println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Total batches: {}", self.total_batches);
         println!("→ Total transactions: {}", self.total_transactions);
@@ -44,7 +48,7 @@ impl BatchMetrics {
     pub fn format_metrics(&self) -> String {
         format!(
             "\n[📊 Pipeline Metrics]\n\
-            → Time: 2025-04-26 21:38:29\n\
+            → Time: {}\n\
             → User: olafcio42\n\
             → Total batches: {}\n\
             → Total transactions: {}\n\
@@ -54,6 +58,7 @@ impl BatchMetrics {
             → End time: {}\n\
             → Processing duration: {:?}\n\
             → Average batch duration: {:?}",
+            get_formatted_timestamp(),
             self.total_batches,
             self.total_transactions,
             self.processed_transactions,

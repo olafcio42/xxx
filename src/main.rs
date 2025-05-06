@@ -5,6 +5,15 @@ use adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use anyhow::Result;
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
+use chrono::Utc;
+
+fn get_formatted_timestamp() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+fn get_formatted_date() -> String {
+    Utc::now().format("%Y/%m/%d").to_string()
+}
 
 // Test transaction data structure
 #[derive(Debug, Clone)]
@@ -79,11 +88,12 @@ fn generate_large_transaction_set(count: usize) -> Vec<TransactionData> {
     let mut transactions = Vec::with_capacity(count);
     let currencies = ["PLN", "EUR", "USD", "GBP", "CHF"];
 
+    let current_time = get_formatted_timestamp();
+
     for i in 0..count {
         let currency = currencies[i % currencies.len()];
-        let amount = 100.0 + (i as f64 % 9900.0); // Amounts from 100 to 10000
+        let amount = 100.0 + (i as f64 % 9900.0);
 
-        // Tworzenie numerów kont z mniejszą bazową wartością
         let source_base = format!("{:08}", i);
         let target_base = format!("{:08}", i + 1);
 
@@ -91,12 +101,14 @@ fn generate_large_transaction_set(count: usize) -> Vec<TransactionData> {
         let target_account = format!("PL{}0000{}", "0".repeat(14), target_base);
 
         transactions.push(TransactionData::new(
-            &format!("BANK/2025/04/26/{:06}", i + 1),
+            &format!("BANK/{}/{:06}",
+                     get_formatted_date(),
+                     i + 1),
             &source_account,
             &target_account,
             amount,
             currency,
-            "2025-04-26 21:34:54"
+            &current_time
         ));
     }
 
@@ -106,7 +118,7 @@ fn generate_large_transaction_set(count: usize) -> Vec<TransactionData> {
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("=== Starting Kyber Key Exchange with TLS and ETL Pipeline ===");
-    println!("→ Date and time: 2025-04-26 21:33:21");
+    println!("→ Date and time: {}", get_formatted_timestamp());
     println!("→ User: olafcio42");
 
     let mut tls_session = TlsSession::new();
@@ -140,31 +152,34 @@ async fn main() -> Result<()> {
 
     println!("\n[6/8] Testing with sample transactions...");
 
+    let current_time = get_formatted_timestamp();
+    let current_date = get_formatted_date();
+
     // Test transaction data
     let test_transactions = vec![
         TransactionData::new(
-            "BANK/2025/04/26/001",
+            &format!("BANK/{}/001", current_date),
             "PL60102010260000042270201111",
             "PL02109024020000000201349787",
             1500.00,
             "PLN",
-            "2025-04-26 21:33:21"
+            &current_time
         ),
         TransactionData::new(
-            "BANK/2025/04/26/002",
+            &format!("BANK/{}/002", current_date),
             "PL61102010260000042270201112",
             "PL03109024020000000201349788",
             2000.00,
             "EUR",
-            "2025-04-26 21:33:21"
+            &current_time
         ),
         TransactionData::new(
-            "BANK/2025/04/26/003",
+            &format!("BANK/{}/003", current_date),
             "PL62102010260000042270201113",
             "PL04109024020000000201349789",
             5000.00,
             "USD",
-            "2025-04-26 21:33:21"
+            &current_time
         ),
     ];
 
@@ -207,7 +222,7 @@ async fn main() -> Result<()> {
     let mut pipeline = etl::pipeline::ETLPipeline::new(1000, public_key.clone());
 
     println!("\n=== Starting Large-Scale Transaction Processing ===");
-    println!("→ Time: 2025-04-26 21:33:21");
+    println!("→ Time: {}", get_formatted_timestamp());
     println!("→ Total transactions to process: {}", large_transaction_set.len());
 
     // Convert TransactionData to Transaction for ETL
@@ -225,7 +240,7 @@ async fn main() -> Result<()> {
     match pipeline.process_transactions(etl_transactions).await {
         Ok(metrics) => {
             println!("\n=== ETL Pipeline Results ===");
-            println!("→ Time: 2025-04-26 21:33:21");
+            println!("→ Time: {}", get_formatted_timestamp());
             println!("→ Total transactions processed: {}", metrics.total_transactions);
             println!("→ Total batches: {}", metrics.total_batches);
             println!("→ Processing duration: {:?}", metrics.processing_duration);
@@ -241,7 +256,7 @@ async fn main() -> Result<()> {
     tls_session.close()?;
 
     println!("\n=== FINAL SUMMARY ===");
-    println!("→ Time: 2025-04-26 21:33:21");
+    println!("→ Time: {}", get_formatted_timestamp());
     println!("→ User: olafcio42");
     println!("→ TLS Session: Completed");
     println!("→ Secrets are identical: {:02x?}...", &secure_enc.expose()[..4]);
@@ -267,22 +282,24 @@ mod tests {
 
     #[test]
     fn test_transaction_data() {
+        let current_time = get_formatted_timestamp();
         let transaction = TransactionData::new(
-            "TEST/2025/001",
+            &format!("TEST/{}/001", get_formatted_date()),
             "PL12345678901234567890123456",
             "PL98765432109876543210987654",
             1000.00,
             "PLN",
-            "2025-04-26 21:33:21"
+            &current_time
         );
 
         let transaction_str = transaction.to_string();
-        assert!(transaction_str.contains("TEST/2025/001"));
+        assert!(transaction_str.contains(&format!("TEST/{}/001", get_formatted_date())));
         assert!(transaction_str.contains("1000.00 PLN"));
     }
 
     #[test]
     fn test_transaction_encryption() -> Result<()> {
+        let current_time = get_formatted_timestamp();
         let (public_key, secret_key) = keypair();
         let (shared_secret_enc, ciphertext) = encapsulate(&public_key);
         let shared_secret_dec = decapsulate(&ciphertext, &secret_key);
@@ -291,12 +308,12 @@ mod tests {
         let secure_dec = SecureSecret::from_shared(shared_secret_dec);
 
         let transaction = TransactionData::new(
-            "TEST/2025/002",
+            &format!("TEST/{}/002", get_formatted_date()),
             "PL12345678901234567890123456",
             "PL98765432109876543210987654",
             1000.00,
             "PLN",
-            "2025-04-26 21:33:21"
+            &current_time
         );
 
         let transaction_bytes = transaction.to_string().into_bytes();
@@ -320,7 +337,7 @@ mod tests {
     #[tokio::test]
     async fn test_etl_pipeline() -> Result<()> {
         println!("=== Testing ETL Pipeline ===");
-        println!("→ Time: 2025-04-26 21:33:21");
+        println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
 
         let test_size = 10_000;
@@ -355,22 +372,23 @@ mod tests {
 
     #[test]
     fn test_multiple_transactions() -> Result<()> {
+        let current_time = get_formatted_timestamp();
         let test_transactions = vec![
             TransactionData::new(
-                "TEST/2025/003",
+                &format!("TEST/{}/003", get_formatted_date()),
                 "PL11111111111111111111111111",
                 "PL22222222222222222222222222",
                 1500.00,
                 "EUR",
-                "2025-04-26 21:33:21"
+                &current_time
             ),
             TransactionData::new(
-                "TEST/2025/004",
+                &format!("TEST/{}/004", get_formatted_date()),
                 "PL33333333333333333333333333",
                 "PL44444444444444444444444444",
                 2000.00,
                 "USD",
-                "2025-04-26 21:33:21"
+                &current_time
             ),
         ];
 

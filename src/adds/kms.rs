@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_invalid_length() {
-        let data = [1u8; 16]; // Too short
+        let data = [1u8; 16];
         let result = DummySharedSecret::from_bytes(&data);
         assert!(result.is_err());
         if let Err(pqcrypto_traits::Error::BadLength { name, expected, actual }) = result {

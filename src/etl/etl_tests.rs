@@ -4,11 +4,17 @@ use crate::etl::{
 };
 use pqcrypto_kyber::kyber1024::*;
 use anyhow::Result;
+use chrono::Utc;
+
+fn get_formatted_timestamp() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
+}
 
 #[tokio::test]
 async fn test_large_transaction_processing() -> Result<()> {
+    let start_time = get_formatted_timestamp();
     println!("\n=== Starting ETL Pipeline Test ===");
-    println!("→ Date and time: 2025-04-26 19:40:38 UTC");
+    println!("→ Date and time: {}", start_time);
     println!("→ User: olafcio42");
 
     // Generate test data (10^5 transactions)
@@ -36,6 +42,8 @@ async fn test_large_transaction_processing() -> Result<()> {
     println!("→ Test completed successfully");
     println!("→ Total transactions processed: {}", metrics.total_transactions);
     println!("→ Processing duration: {:?}", metrics.processing_duration);
+    println!("→ Start time: {}", start_time);
+    println!("→ End time: {}", get_formatted_timestamp());
 
     Ok(())
 }
