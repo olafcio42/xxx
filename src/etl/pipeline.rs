@@ -97,7 +97,7 @@ impl ETLPipeline {
         }
 
         pb.finish_with_message(format!(
-            "✅ Processing completed! Processed: {} | Failed: {} | Time: {:?}",
+            "V Processing completed! Processed: {} | Failed: {} | Time: {:?}",
             processed,
             failed,
             start.elapsed()
@@ -108,7 +108,7 @@ impl ETLPipeline {
         metrics.total_transactions = transactions.len();
         metrics.total_batches = (transactions.len() + self.batch_size - 1) / self.batch_size;
 
-        println!("\n[✅ ETL Pipeline Results]");
+        println!("\n[V ETL Pipeline Results]");
         println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Total processed: {}", self.processed_count);

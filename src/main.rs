@@ -247,7 +247,7 @@ async fn main() -> Result<()> {
             println!("→ Average batch duration: {:?}", metrics.average_batch_duration);
         },
         Err(e) => {
-            println!("\n[❌ ETL Pipeline Error]");
+            println!("\n[X ETL Pipeline Error]");
             println!("→ Error: {}", e);
         }
     }

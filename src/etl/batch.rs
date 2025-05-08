@@ -14,7 +14,7 @@ pub struct TransactionBatch {
 
 impl TransactionBatch {
     pub fn new(batch_size: usize) -> Self {
-        println!("\n[📦 Creating New Transaction Batch]");
+        println!("\n[Creating New Transaction Batch]");
         println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Batch size: {}", batch_size);
@@ -27,7 +27,7 @@ impl TransactionBatch {
 
     pub fn add_transaction(&mut self, transaction: Transaction) -> Result<()> {
         if self.is_full() {
-            println!("\n[❌ Batch Operation Failed]");
+            println!("\n[X Batch Operation Failed]");
             println!("→ Time: {}", get_formatted_timestamp());
             println!("→ Error: Batch is full ({}/{})",
                      self.current_size(),

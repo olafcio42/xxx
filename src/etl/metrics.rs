@@ -35,7 +35,7 @@ impl BatchMetrics {
             );
         }
 
-        println!("\n[📊 Batch Metrics Update]");
+        println!("\n[|||| Batch Metrics Update]");
         println!("→ Time: {}", get_formatted_timestamp());
         println!("→ User: olafcio42");
         println!("→ Total batches: {}", self.total_batches);
@@ -47,7 +47,7 @@ impl BatchMetrics {
 
     pub fn format_metrics(&self) -> String {
         format!(
-            "\n[📊 Pipeline Metrics]\n\
+            "\n[|||| Pipeline Metrics]\n\
             → Time: {}\n\
             → User: olafcio42\n\
             → Total batches: {}\n\

@@ -16,8 +16,8 @@ impl Transaction {
         let id = format!(
             "TXN_{}_{}_{}",
             chrono::Utc::now().format("%Y%m%d%H%M%S"),
-            source_account.split_at(8).0,
-            target_account.split_at(8).0
+            if source_account.len() >= 8 { &source_account[..8] } else { &source_account },
+            if target_account.len() >= 8 { &target_account[..8] } else { &target_account }
         );
 
         Self {

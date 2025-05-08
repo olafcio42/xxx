@@ -2,14 +2,13 @@ use crate::adds::secure::SecureSecret;
 use anyhow::{Context, Result};
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{PublicKey, SecretKey, SharedSecret, Ciphertext};
-use std::time::{SystemTime, UNIX_EPOCH, Instant, Duration};
+use std::time::{Instant, Duration};
 use rand::{rngs::OsRng, RngCore};
 use std::fmt;
 use chrono::{DateTime, Utc, TimeZone};
 
-/// TLS session states
 #[derive(Debug, PartialEq)]
-enum TlsState {
+pub enum TlsState {
     Initial,
     HandshakeInProgress,
     EstablishingKeys,
@@ -17,7 +16,6 @@ enum TlsState {
     Closed,
 }
 
-/// Structure for TLS session metrics with dynamic time tracking
 #[derive(Debug)]
 pub struct TlsMetrics {
     handshake_duration: Duration,
@@ -26,13 +24,11 @@ pub struct TlsMetrics {
     bytes_received: usize,
     operations_count: u32,
     last_activity: DateTime<Utc>,
-    session_start: DateTime<Utc>,
 }
 
 impl Default for TlsMetrics {
     fn default() -> Self {
-        // Use the provided UTC time: 2025-05-06 19:40:11
-        let current_time = Utc.ymd(2025, 5, 6).and_hms(19, 40, 11);
+        let current_time = Utc.with_ymd_and_hms(2025, 5, 6, 19, 40, 11).unwrap();
 
         Self {
             handshake_duration: Duration::default(),
@@ -41,18 +37,15 @@ impl Default for TlsMetrics {
             bytes_received: 0,
             operations_count: 0,
             last_activity: current_time,
-            session_start: current_time,
         }
     }
 }
 
-/// Main TLS session structure with dynamic time management
 pub struct TlsSession {
     id: String,
     state: TlsState,
     created_at: DateTime<Utc>,
     client_random: Vec<u8>,
-    server_random: Vec<u8>,
     kyber_keypair: Option<KyberKeyPair>,
     shared_secret: Option<SecureSecret>,
     metrics: TlsMetrics,
@@ -95,13 +88,11 @@ impl fmt::Debug for TlsSession {
 }
 
 impl TlsSession {
-    /// Creates a new TLS session with dynamic time settings
     pub fn new() -> Self {
         let mut client_random = vec![0u8; 32];
         OsRng.fill_bytes(&mut client_random);
 
-        // Use the provided UTC time: 2025-05-06 19:40:11
-        let current_time = Utc.ymd(2025, 5, 6).and_hms(19, 40, 11);
+        let current_time = Utc.with_ymd_and_hms(2025, 5, 6, 19, 40, 11).unwrap();
         let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
 
         Self {
@@ -109,64 +100,51 @@ impl TlsSession {
             state: TlsState::Initial,
             created_at: current_time,
             client_random,
-            server_random: Vec::new(),
             kyber_keypair: None,
             shared_secret: None,
             metrics: TlsMetrics::default(),
-            user: "olafcio42".to_string(),  // Use the provided user login
-            session_timeout: Duration::from_secs(3600), // 1 hour default timeout
+            user: "olafcio42".to_string(),
+            session_timeout: Duration::from_secs(3600),
             last_renewed: current_time,
             timestamp: formatted_time,
         }
     }
 
-    /// Updates the session's timestamp and checks for timeout
     pub fn update_session_time(&mut self) -> Result<bool> {
-        // Use the provided UTC time for demonstration
-        let current_time = Utc.ymd(2025, 5, 6).and_hms(19, 40, 11);
+        let current_time = Utc.with_ymd_and_hms(2025, 5, 6, 19, 40, 11).unwrap();
         self.metrics.last_activity = current_time;
         self.timestamp = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        // Check if session has timed out
         if current_time.signed_duration_since(self.last_renewed)
             .to_std()
             .unwrap_or(Duration::from_secs(0)) > self.session_timeout {
             self.state = TlsState::Closed;
-            println!("⚠️ Session timed out after {:?}", self.session_timeout);
+            println!("⚠! Session timed out after {:?}", self.session_timeout);
             return Ok(false);
         }
 
         Ok(true)
     }
 
-    /// Renews the session timeout
-    pub fn renew_session(&mut self) {
-        self.last_renewed = Utc.ymd(2025, 5, 6).and_hms(19, 40, 11);
-        println!("🔄 Session renewed at: {}", self.timestamp);
-    }
 
-    /// Initiates the TLS handshake
     pub fn begin_handshake(&mut self) -> Result<()> {
         if !self.update_session_time()? {
             return Err(anyhow::anyhow!("Session timed out before handshake"));
         }
 
-        println!("\n[🤝 Starting TLS Handshake]");
+        println!("\n[Starting TLS Handshake]");
         println!("→ User: {}", self.user);
         println!("→ Timestamp: {}", self.timestamp);
 
         let start = Instant::now();
         self.state = TlsState::HandshakeInProgress;
 
-        // Generate entropy for handshake
         let mut extra_entropy = Vec::new();
-        let timestamp = self.metrics.last_activity.timestamp_nanos() as u128;
+        let timestamp = self.metrics.last_activity.timestamp_nanos_opt().unwrap() as u128;
         extra_entropy.extend_from_slice(&timestamp.to_le_bytes());
 
-        // Generate Kyber keypair
         self.generate_kyber_keys()?;
 
-        // Update metrics
         self.metrics.handshake_duration = start.elapsed();
         self.metrics.operations_count += 1;
         println!("→ Initial handshake completed in {:?}", self.metrics.handshake_duration);
@@ -174,12 +152,10 @@ impl TlsSession {
         Ok(())
     }
 
-    /// Generates Kyber keys for the session
     fn generate_kyber_keys(&mut self) -> Result<()> {
-        println!("\n[🔑 Generating Kyber keys for TLS...]");
+        println!("\n[Generating Kyber keys for TLS...]");
         let start = Instant::now();
 
-        // Generate keypair with additional entropy
         let mut rng = OsRng;
         let mut extra_entropy = [0u8; 32];
         rng.fill_bytes(&mut extra_entropy);
@@ -195,14 +171,11 @@ impl TlsSession {
         println!("→ Secret key size: {} bytes", secret_key.as_bytes().len());
         println!("→ Extra entropy added: {} bytes", extra_entropy.len());
 
-        // Update metrics
         self.metrics.key_exchange_duration = start.elapsed();
         println!("→ Key generation completed in {:?}", self.metrics.key_exchange_duration);
-
         Ok(())
     }
 
-    /// Performs key exchange using Kyber
     pub fn perform_key_exchange(&mut self) -> Result<()> {
         println!("\n[🔄 Performing Key Exchange]");
         println!("→ Session ID: {}", self.id);
@@ -221,7 +194,6 @@ impl TlsSession {
             .context("Failed to parse secret key")?;
         let decapsulated = decapsulate(&Ciphertext::from_bytes(&ciphertext.as_bytes())?, &secret_key);
 
-        // Verify shared secrets match
         if shared_secret.as_bytes() != decapsulated.as_bytes() {
             return Err(anyhow::anyhow!("Shared secrets do not match"));
         }
@@ -229,22 +201,19 @@ impl TlsSession {
         self.shared_secret = Some(SecureSecret::from_shared(shared_secret));
         self.state = TlsState::Connected;
 
-        // Update metrics
         self.metrics.key_exchange_duration += start.elapsed();
         self.metrics.operations_count += 1;
         println!("→ Key exchange completed in {:?}", self.metrics.key_exchange_duration);
-        println!("✅ Shared secrets verified and match");
+        println!("V Shared secrets verified and match");
 
         Ok(())
     }
 
-    /// Closes the TLS session
     pub fn close(&mut self) -> Result<()> {
-        println!("\n[👋 Closing TLS Session]");
+        println!("\n[X Closing TLS Session]");
         println!("→ Session ID: {}", self.id);
         println!("→ User: {}", self.user);
 
-        // Clear sensitive data
         if let Some(keypair) = self.kyber_keypair.as_mut() {
             secure_clear(&mut keypair.secret_key);
             println!("→ Secret key securely cleared");
@@ -257,9 +226,8 @@ impl TlsSession {
         Ok(())
     }
 
-    /// Print session metrics
     pub fn print_metrics(&self) {
-        println!("\n[📊 TLS Session Metrics]");
+        println!("\n[|||| TLS Session Metrics]");
         println!("→ Session ID: {}", self.id);
         println!("→ User: {}", self.user);
         println!("→ Timestamp: {}", self.timestamp);
@@ -270,28 +238,7 @@ impl TlsSession {
         println!("→ Total bytes received: {}", self.metrics.bytes_received);
     }
 
-    /// Print detailed timing information
-    pub fn print_timing_info(&self) {
-        println!("\n[⏰ Session Timing Information]");
-        println!("→ Session start: {}", self.timestamp);
-        println!("→ Last activity: {}", self.metrics.last_activity);
-        println!("→ Session timeout: {:?}", self.session_timeout);
-        println!("→ Time until timeout: {:?}",
-                 self.session_timeout.checked_sub(
-                     self.metrics.last_activity
-                         .signed_duration_since(self.last_renewed)
-                         .to_std()
-                         .unwrap_or(Duration::from_secs(0))
-                 ).unwrap_or(Duration::from_secs(0))
-        );
-    }
 
-    /// Gets the current session state
-    pub fn get_state(&self) -> &TlsState {
-        &self.state
-    }
-
-    /// Gets the session ID
     pub fn get_session_id(&self) -> &str {
         &self.id
     }
