@@ -1,10 +1,8 @@
-pub mod transaction;
-pub mod batch;
-pub mod metrics;
-pub mod pipeline;
-mod etl_tests;
+//Public modules
+pub mod transaction;  //Transaction processing and validation
+pub mod batch;       //Batch operations handling
+pub mod metrics;     //Performance and operational metrics
+pub mod pipeline;    //ETL pipeline implementation
 
-pub use pipeline::ETLPipeline;
-pub use transaction::Transaction;
-pub use metrics::BatchMetrics;
-pub use batch::TransactionBatch;
+//Private modules
+mod etl_tests;      //Internal testing utilities

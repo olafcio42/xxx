@@ -1,3 +1,7 @@
+//ETL Pipeline Implementation
+//Author: olafcio42
+//Last Modified: 2025-05-08 18:27:02
+
 use super::{
     transaction::Transaction,
     metrics::BatchMetrics,
@@ -11,10 +15,12 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
 use chrono::Utc;
 
+//Returns current timestamp in formatted string
 fn get_formatted_timestamp() -> String {
     Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+//Main ETL pipeline for processing transactions
 pub struct ETLPipeline {
     batch_size: usize,
     current_batch: TransactionBatch,
@@ -24,6 +30,7 @@ pub struct ETLPipeline {
 }
 
 impl ETLPipeline {
+    //Creates new ETL pipeline with specified batch size and encryption key
     pub fn new(batch_size: usize, public_key: impl PublicKey + 'static) -> Self {
         Self {
             batch_size,
@@ -34,20 +41,21 @@ impl ETLPipeline {
         }
     }
 
+    //Processes a vector of transactions asynchronously with progress tracking
     pub async fn process_transactions(&mut self, transactions: Vec<Transaction>) -> Result<BatchMetrics> {
-        println!("\n[🚀 Starting ETL Pipeline]");
-        println!("→ Time: {}", get_formatted_timestamp());
-        println!("→ User: olafcio42");
-        println!("→ Total transactions to process: {}", transactions.len());
+        println!("\n[Starting ETL Pipeline]");
+        println!("-> Time: {}", get_formatted_timestamp());
+        println!("-> User: olafcio42");
+        println!("-> Total transactions to process: {}", transactions.len());
 
         let start = Instant::now();
         let (tx, mut rx) = mpsc::channel(self.batch_size);
         let mut metrics = BatchMetrics::default();
         metrics.start_time = Some(Utc::now());
 
-        // Process transactions in parallel using channels with increased buffer
+        //Process transactions in parallel using channels with increased buffer
         let tx = Arc::new(tx);
-        let chunk_size = 50; // Process in smaller chunks for better feedback
+        let chunk_size = 50; //Process in smaller chunks for better feedback
 
         for chunk in transactions.chunks(chunk_size) {
             let chunk_tx = tx.clone();
@@ -62,10 +70,10 @@ impl ETLPipeline {
             });
         }
 
-        // Drop the original sender to signal completion
+        //Drop the original sender to signal completion
         drop(tx);
 
-        // Process results with progress bar
+        //Process results with progress bar
         let pb = ProgressBar::new(transactions.len() as u64);
         pb.set_style(ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} | {percent}% | {msg}")
@@ -97,7 +105,7 @@ impl ETLPipeline {
         }
 
         pb.finish_with_message(format!(
-            "V Processing completed! Processed: {} | Failed: {} | Time: {:?}",
+            "Processing completed! Processed: {} | Failed: {} | Time: {:?}",
             processed,
             failed,
             start.elapsed()
@@ -108,13 +116,13 @@ impl ETLPipeline {
         metrics.total_transactions = transactions.len();
         metrics.total_batches = (transactions.len() + self.batch_size - 1) / self.batch_size;
 
-        println!("\n[V ETL Pipeline Results]");
-        println!("→ Time: {}", get_formatted_timestamp());
-        println!("→ User: olafcio42");
-        println!("→ Total processed: {}", self.processed_count);
-        println!("→ Total failed: {}", self.failed_count);
-        println!("→ Duration: {:?}", metrics.processing_duration);
-        println!("→ Average speed: {:.2} transactions/second",
+        println!("\n[ETL Pipeline Results]");
+        println!("-> Time: {}", get_formatted_timestamp());
+        println!("-> User: olafcio42");
+        println!("-> Total processed: {}", self.processed_count);
+        println!("-> Total failed: {}", self.failed_count);
+        println!("-> Duration: {:?}", metrics.processing_duration);
+        println!("-> Average speed: {:.2} transactions/second",
                  transactions.len() as f64 / metrics.processing_duration.as_secs_f64());
 
         Ok(metrics)

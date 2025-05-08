@@ -1,3 +1,7 @@
+//TLS Session Management Implementation
+//Author: olafcio42
+//Last Modified: 2025-05-08 18:20:44
+
 use crate::adds::secure::SecureSecret;
 use anyhow::{Context, Result};
 use pqcrypto_kyber::kyber1024::*;
@@ -7,6 +11,7 @@ use rand::{rngs::OsRng, RngCore};
 use std::fmt;
 use chrono::{DateTime, Utc, TimeZone};
 
+//TLS Session States
 #[derive(Debug, PartialEq)]
 pub enum TlsState {
     Initial,
@@ -16,6 +21,7 @@ pub enum TlsState {
     Closed,
 }
 
+//Metrics for TLS session monitoring
 #[derive(Debug)]
 pub struct TlsMetrics {
     handshake_duration: Duration,
@@ -41,6 +47,7 @@ impl Default for TlsMetrics {
     }
 }
 
+//Main TLS session structure
 pub struct TlsSession {
     id: String,
     state: TlsState,
@@ -55,12 +62,14 @@ pub struct TlsSession {
     timestamp: String,
 }
 
+//Kyber key pair wrapper
 #[derive(Clone)]
 struct KyberKeyPair {
     public_key: Vec<u8>,
     secret_key: Vec<u8>,
 }
 
+//Safe debug implementation for KyberKeyPair
 impl fmt::Debug for KyberKeyPair {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("KyberKeyPair")
@@ -70,6 +79,7 @@ impl fmt::Debug for KyberKeyPair {
     }
 }
 
+//Safe debug implementation for TlsSession
 impl fmt::Debug for TlsSession {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TlsSession")
@@ -88,6 +98,7 @@ impl fmt::Debug for TlsSession {
 }
 
 impl TlsSession {
+    //Creates a new TLS session with default settings
     pub fn new() -> Self {
         let mut client_random = vec![0u8; 32];
         OsRng.fill_bytes(&mut client_random);
@@ -110,6 +121,7 @@ impl TlsSession {
         }
     }
 
+    //Updates session timestamp and checks for timeout
     pub fn update_session_time(&mut self) -> Result<bool> {
         let current_time = Utc.with_ymd_and_hms(2025, 5, 6, 19, 40, 11).unwrap();
         self.metrics.last_activity = current_time;
@@ -126,7 +138,7 @@ impl TlsSession {
         Ok(true)
     }
 
-
+    //Initiates TLS handshake process
     pub fn begin_handshake(&mut self) -> Result<()> {
         if !self.update_session_time()? {
             return Err(anyhow::anyhow!("Session timed out before handshake"));
@@ -152,6 +164,7 @@ impl TlsSession {
         Ok(())
     }
 
+    //Generates Kyber keypair for the session
     fn generate_kyber_keys(&mut self) -> Result<()> {
         println!("\n[Generating Kyber keys for TLS...]");
         let start = Instant::now();
@@ -176,8 +189,9 @@ impl TlsSession {
         Ok(())
     }
 
+    //Performs key exchange using Kyber
     pub fn perform_key_exchange(&mut self) -> Result<()> {
-        println!("\n[🔄 Performing Key Exchange]");
+        println!("\n[++ Performing Key Exchange]");
         println!("→ Session ID: {}", self.id);
         let start = Instant::now();
 
@@ -209,6 +223,7 @@ impl TlsSession {
         Ok(())
     }
 
+    //Closes the TLS session and cleans up sensitive data
     pub fn close(&mut self) -> Result<()> {
         println!("\n[X Closing TLS Session]");
         println!("→ Session ID: {}", self.id);
@@ -226,6 +241,7 @@ impl TlsSession {
         Ok(())
     }
 
+    //Prints session metrics
     pub fn print_metrics(&self) {
         println!("\n[|||| TLS Session Metrics]");
         println!("→ Session ID: {}", self.id);
@@ -238,19 +254,20 @@ impl TlsSession {
         println!("→ Total bytes received: {}", self.metrics.bytes_received);
     }
 
-
+    //Gets the session ID
     pub fn get_session_id(&self) -> &str {
         &self.id
     }
 }
 
-/// Securely clears sensitive data from memory
+//Securely clears sensitive data from memory
 fn secure_clear(data: &mut [u8]) {
     for byte in data.iter_mut() {
         *byte = 0;
     }
 }
 
+//Unit tests
 #[cfg(test)]
 mod tests {
     use super::*;

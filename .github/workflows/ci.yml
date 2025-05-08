@@ -1,22 +1,47 @@
+#Rust CI/CD Pipeline
+#This workflow runs tests for a Rust project on push to main and pull requests
+
 name: Rust CI
 
+#Defines when the workflow will run
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]  #Triggers on pushes to main branch
   pull_request:
-    branches: [ main ]
+    branches: [ main ]  #Triggers on PRs targeting main branch
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Run Tests
+    runs-on: ubuntu-latest  #Uses latest Ubuntu runner
+    
     steps:
-      - uses: actions/checkout@v3
-
+      #Step 1: Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      #Step 2: Install Rust toolchain
+      #Uses actions-rs/toolchain to set up Rust with minimal profile for faster installation
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: stable
-
+          profile: minimal  #Minimal profile for faster setup
+          toolchain: stable #Uses stable Rust version
+      
+      #Step 3: Run cargo test
+      #Executes all tests in the project
       - name: Run tests
         run: cargo test
+
+#This workflow performs:
+#1. Triggers on pushes to main branch and pull requests
+#2. Sets up a Ubuntu environment
+#3. Checks out the repository
+#4. Installs Rust toolchain with minimal profile
+#5. Runs all tests using cargo test
+
+#Key features:
+#- Uses stable Rust toolchain
+#- Minimal profile for faster CI
+#- Automated testing on both push and PR events
+#- Clean and efficient setup process

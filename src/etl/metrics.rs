@@ -1,10 +1,12 @@
 use std::time::Duration;
 use chrono::{DateTime, Utc};
 
+//Returns current timestamp in formatted string
 fn get_formatted_timestamp() -> String {
     Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+//Collects and manages batch processing metrics
 #[derive(Debug, Default, Clone)]
 pub struct BatchMetrics {
     pub total_transactions: usize,
@@ -19,6 +21,7 @@ pub struct BatchMetrics {
 }
 
 impl BatchMetrics {
+    //Records and updates metrics from a processed batch
     pub fn record_batch(&mut self, batch_metrics: &BatchMetrics) {
         self.total_batches += 1;
         self.total_transactions += batch_metrics.total_transactions;
@@ -35,29 +38,30 @@ impl BatchMetrics {
             );
         }
 
-        println!("\n[|||| Batch Metrics Update]");
-        println!("→ Time: {}", get_formatted_timestamp());
-        println!("→ User: olafcio42");
-        println!("→ Total batches: {}", self.total_batches);
-        println!("→ Total transactions: {}", self.total_transactions);
-        println!("→ Processed transactions: {}", self.processed_transactions);
-        println!("→ Failed transactions: {}", self.failed_transactions);
-        println!("→ Average batch duration: {:?}", self.average_batch_duration);
+        println!("\n[Batch Metrics Update]");
+        println!("-> Time: {}", get_formatted_timestamp());
+        println!("-> User: olafcio42");
+        println!("-> Total batches: {}", self.total_batches);
+        println!("-> Total transactions: {}", self.total_transactions);
+        println!("-> Processed transactions: {}", self.processed_transactions);
+        println!("-> Failed transactions: {}", self.failed_transactions);
+        println!("-> Average batch duration: {:?}", self.average_batch_duration);
     }
 
+    //Formats metrics into a detailed string report
     pub fn format_metrics(&self) -> String {
         format!(
-            "\n[|||| Pipeline Metrics]\n\
-            → Time: {}\n\
-            → User: olafcio42\n\
-            → Total batches: {}\n\
-            → Total transactions: {}\n\
-            → Processed transactions: {}\n\
-            → Failed transactions: {}\n\
-            → Start time: {}\n\
-            → End time: {}\n\
-            → Processing duration: {:?}\n\
-            → Average batch duration: {:?}",
+            "\n[Pipeline Metrics]\n\
+            -> Time: {}\n\
+            -> User: olafcio42\n\
+            -> Total batches: {}\n\
+            -> Total transactions: {}\n\
+            -> Processed transactions: {}\n\
+            -> Failed transactions: {}\n\
+            -> Start time: {}\n\
+            -> End time: {}\n\
+            -> Processing duration: {:?}\n\
+            -> Average batch duration: {:?}",
             get_formatted_timestamp(),
             self.total_batches,
             self.total_transactions,

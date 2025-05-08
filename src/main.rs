@@ -1,12 +1,19 @@
+//Main Application Entry Point
+//Author: olafcio42
+//Last Modified: 2025-05-08 18:31:29
+
+//Module declarations
 mod adds;
 pub mod etl;
 
+//External imports
 use adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use anyhow::Result;
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
 use chrono::Utc;
 
+//Time formatting utilities
 fn get_formatted_timestamp() -> String {
     Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
@@ -15,7 +22,7 @@ fn get_formatted_date() -> String {
     Utc::now().format("%Y/%m/%d").to_string()
 }
 
-// Test transaction data structure
+//Transaction data structure for testing
 #[derive(Debug, Clone)]
 struct TransactionData {
     transaction_id: String,
@@ -27,6 +34,7 @@ struct TransactionData {
 }
 
 impl TransactionData {
+    //Creates new transaction data instance
     fn new(id: &str, source: &str, target: &str, amount: f64, currency: &str, timestamp: &str) -> Self {
         Self {
             transaction_id: id.to_string(),
@@ -38,6 +46,7 @@ impl TransactionData {
         }
     }
 
+    //Formats transaction data as string
     fn to_string(&self) -> String {
         format!(
             "Transaction ID: {}\n\
@@ -51,6 +60,7 @@ impl TransactionData {
     }
 }
 
+//Performs key exchange and encryption test
 fn perform_key_exchange() -> Result<(Vec<u8>, Vec<u8>, bool)> {
     let mut tls_session = TlsSession::new();
     tls_session.begin_handshake()?;
@@ -84,6 +94,7 @@ fn perform_key_exchange() -> Result<(Vec<u8>, Vec<u8>, bool)> {
     ))
 }
 
+//Generates test transaction data set
 fn generate_large_transaction_set(count: usize) -> Vec<TransactionData> {
     let mut transactions = Vec::with_capacity(count);
     let currencies = ["PLN", "EUR", "USD", "GBP", "CHF"];
@@ -115,47 +126,54 @@ fn generate_large_transaction_set(count: usize) -> Vec<TransactionData> {
     transactions
 }
 
+//Main application entry point
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("=== Starting Kyber Key Exchange with TLS and ETL Pipeline ===");
-    println!("→ Date and time: {}", get_formatted_timestamp());
-    println!("→ User: olafcio42");
+    println!("-> Date and time: {}", get_formatted_timestamp());
+    println!("-> User: olafcio42");
 
     let mut tls_session = TlsSession::new();
-    println!("→ Session ID: {}", tls_session.get_session_id());
+    println!("-> Session ID: {}", tls_session.get_session_id());
 
     tls_session.begin_handshake()?;
 
+    //Step 1: Key generation
     println!("\n[1/8] Generating key pair...");
     let (public_key, secret_key) = keypair();
-    println!("→ Generated public key ({} bytes)", public_key.as_bytes().len());
-    println!("→ Generated private key ({} bytes)", secret_key.as_bytes().len());
+    println!("-> Generated public key ({} bytes)", public_key.as_bytes().len());
+    println!("-> Generated private key ({} bytes)", secret_key.as_bytes().len());
 
+    //Step 2: Key validation
     println!("\n[2/8] Validating keys...");
     validate_keys(&public_key, &secret_key)?;
-    println!("→ Status: Keys are compatible");
+    println!("-> Status: Keys are compatible");
 
+    //Step 3: TLS handshake
     println!("\n[3/8] Performing TLS key exchange...");
     tls_session.perform_key_exchange()?;
 
+    //Step 4: Kyber key exchange
     println!("\n[4/8] Kyber key exchange process...");
     let (shared_secret_enc, ciphertext) = encapsulate(&public_key);
-    println!("→ Generated shared secret ({} bytes)", shared_secret_enc.as_bytes().len());
-    println!("→ Created ciphertext ({} bytes)", ciphertext.as_bytes().len());
+    println!("-> Generated shared secret ({} bytes)", shared_secret_enc.as_bytes().len());
+    println!("-> Created ciphertext ({} bytes)", ciphertext.as_bytes().len());
 
     let shared_secret_dec = decapsulate(&ciphertext, &secret_key);
-    println!("→ Recovered shared secret ({} bytes)", shared_secret_dec.as_bytes().len());
+    println!("-> Recovered shared secret ({} bytes)", shared_secret_dec.as_bytes().len());
 
+    //Step 5: Secure secret creation
     println!("\n[5/8] Creating secure secrets...");
     let secure_enc = SecureSecret::from_shared(shared_secret_enc);
     let secure_dec = SecureSecret::from_shared(shared_secret_dec);
 
+    //Step 6: Transaction testing
     println!("\n[6/8] Testing with sample transactions...");
 
     let current_time = get_formatted_timestamp();
     let current_date = get_formatted_date();
 
-    // Test transaction data
+    //Test transaction data
     let test_transactions = vec![
         TransactionData::new(
             &format!("BANK/{}/001", current_date),
@@ -210,22 +228,23 @@ async fn main() -> Result<()> {
         println!("{}", String::from_utf8_lossy(&decrypted));
 
         assert_eq!(transaction_bytes, decrypted, "Transaction data integrity check failed!");
-        println!("✓ Transaction data integrity verified");
+        println!("Data integrity verified");
     }
 
+    //Step 7: ETL Pipeline testing
     println!("\n[7/8] Testing ETL Pipeline with large transaction volume...");
 
-    // Generate large transaction set
+    //Generate large transaction set
     let large_transaction_set = generate_large_transaction_set(100_000);
 
-    // Create and run pipeline
+    //Create and run pipeline
     let mut pipeline = etl::pipeline::ETLPipeline::new(1000, public_key.clone());
 
     println!("\n=== Starting Large-Scale Transaction Processing ===");
-    println!("→ Time: {}", get_formatted_timestamp());
-    println!("→ Total transactions to process: {}", large_transaction_set.len());
+    println!("-> Time: {}", get_formatted_timestamp());
+    println!("-> Total transactions to process: {}", large_transaction_set.len());
 
-    // Convert TransactionData to Transaction for ETL
+    //Convert TransactionData to Transaction for ETL
     let etl_transactions: Vec<etl::transaction::Transaction> = large_transaction_set
         .into_iter()
         .map(|td| etl::transaction::Transaction::new(
@@ -236,37 +255,40 @@ async fn main() -> Result<()> {
         ))
         .collect();
 
-    // Process transactions through pipeline
+    //Process transactions through pipeline
     match pipeline.process_transactions(etl_transactions).await {
         Ok(metrics) => {
             println!("\n=== ETL Pipeline Results ===");
-            println!("→ Time: {}", get_formatted_timestamp());
-            println!("→ Total transactions processed: {}", metrics.total_transactions);
-            println!("→ Total batches: {}", metrics.total_batches);
-            println!("→ Processing duration: {:?}", metrics.processing_duration);
-            println!("→ Average batch duration: {:?}", metrics.average_batch_duration);
+            println!("-> Time: {}", get_formatted_timestamp());
+            println!("-> Total transactions processed: {}", metrics.total_transactions);
+            println!("-> Total batches: {}", metrics.total_batches);
+            println!("-> Processing duration: {:?}", metrics.processing_duration);
+            println!("-> Average batch duration: {:?}", metrics.average_batch_duration);
         },
         Err(e) => {
-            println!("\n[X ETL Pipeline Error]");
-            println!("→ Error: {}", e);
+            println!("\n[Error: ETL Pipeline]");
+            println!("-> Error: {}", e);
         }
     }
 
+    //Step 8: Cleanup
     println!("\n[8/8] Finalizing TLS session...");
     tls_session.close()?;
 
+    //Final summary
     println!("\n=== FINAL SUMMARY ===");
-    println!("→ Time: {}", get_formatted_timestamp());
-    println!("→ User: olafcio42");
-    println!("→ TLS Session: Completed");
-    println!("→ Secrets are identical: {:02x?}...", &secure_enc.expose()[..4]);
-    println!("→ Standard test transactions processed: {}", test_transactions.len());
-    println!("→ Large-scale ETL pipeline test: Completed");
-    println!("→ All transaction data integrity checks: PASSED");
+    println!("-> Time: {}", get_formatted_timestamp());
+    println!("-> User: olafcio42");
+    println!("-> TLS Session: Completed");
+    println!("-> Secrets are identical: {:02x?}...", &secure_enc.expose()[..4]);
+    println!("-> Standard test transactions processed: {}", test_transactions.len());
+    println!("-> Large-scale ETL pipeline test: Completed");
+    println!("-> All transaction data integrity checks: PASSED");
 
     Ok(())
 }
 
+//Unit tests
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,8 +359,8 @@ mod tests {
     #[tokio::test]
     async fn test_etl_pipeline() -> Result<()> {
         println!("=== Testing ETL Pipeline ===");
-        println!("→ Time: {}", get_formatted_timestamp());
-        println!("→ User: olafcio42");
+        println!("-> Time: {}", get_formatted_timestamp());
+        println!("-> User: olafcio42");
 
         let test_size = 10_000;
         let transactions = generate_large_transaction_set(test_size);
@@ -361,8 +383,8 @@ mod tests {
         assert_eq!(metrics.total_transactions, test_size);
         assert!(metrics.processing_duration.as_secs() < 60);
 
-        println!("→ Test completed successfully");
-        println!("→ Processed {} transactions in {:?}",
+        println!("-> Test completed successfully");
+        println!("-> Processed {} transactions in {:?}",
                  metrics.total_transactions,
                  metrics.processing_duration
         );
