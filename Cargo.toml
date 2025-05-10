@@ -1,40 +1,40 @@
-        [package]
-        name = "PQC_kyber"
-        version = "0.1.0"
-        edition = "2021"
+[package]
+name = "PQC_kyber"
+version = "0.1.0"
+edition = "2021"
 
-        [lib]
-        name = "pqc_kyber"
-        path = "src/lib.rs"
-        crate-type = ["rlib", "cdylib"]
+[lib]
+name = "pqc_kyber"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
 
-        [[bin]]
-        name = "pqc_kyber"
-        path = "src/main.rs"
+[[bin]]
+name = "PQC_kyber"
+path = "src/main.rs"
 
-        [dependencies]
-        pqcrypto-kyber = "0.7.9"
-        pqcrypto-traits = "0.3.5"
-        anyhow = "1.0"
-        rand = "0.8.5"
-        rsa = { version = "0.9.6", features = ["serde", "pem"] }
-        rand_core = "0.6.4"
-        secrecy = "0.8"
-        serde = { version = "1.0", features = ["derive"] }
-        tokio = { version = "1.0", features = ["full", "rt-multi-thread"] }
-        indicatif = "0.17.7"
-        chrono = "0.4"
+[dependencies]
+pqcrypto-kyber = "0.7.9"
+pqcrypto-traits = "0.3.5"
+anyhow = "1.0"
+rand = "0.8.5"
+rsa = { version = "0.9.6", features = ["serde", "pem"] }
+rand_core = "0.6.4"
+secrecy = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full", "rt-multi-thread"] }
+indicatif = "0.17.7"
+chrono = "0.4"
 
-        # Updated Python dependencies with specific features
-        pyo3 = { version = "0.19", features = ["auto-initialize", "extension-module"] }
-        numpy = "0.19"
+# Updated Python dependencies with specific features
+pyo3 = { version = "0.19", features = ["auto-initialize", "extension-module"] }
+numpy = "0.19"
 
-        [dev-dependencies]
-        criterion = "0.4"
+[dev-dependencies]
+criterion = "0.4"
 
-        [[bench]]
-        name = "benchmarks"
-        harness = false
+[[bench]]
+name = "benchmarks"
+harness = false
 
-        [build-dependencies]
-        pyo3-build-config = "0.19"
+[build-dependencies]
+pyo3-build-config = "0.19"
