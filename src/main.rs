@@ -1,7 +1,3 @@
-//Main Application Entry Point
-//Author: olafcio42
-//Last Modified: 2025-05-08 18:31:29
-
 //Module declarations
 mod adds;
 pub mod etl;
