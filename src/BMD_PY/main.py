@@ -10,12 +10,14 @@ from sklearn.metrics import (
 )
 import joblib
 import os
+import json # Import json module
 
 #---Global Configuration---
-DATA_FILE = 'synthetic_behavioral_data.csv'
+DATA_FILE = 'synthetic_behavioral_data.csv' # Using the harder data
 MODEL_OUTPUT_FILE = 'risk_model.pkl'
 TARGET_COLUMN = 'risk_flag_manual'
 EVAL_REPORT_FILE = 'risk_model_eval.md'
+MODEL_FEATURES_FILE = 'model_features.json' # New file to store feature names
 
 #---Feature Definitions for Model Preprocessing---
 NUMERIC_FEATURES_FOR_MODEL = [
@@ -129,6 +131,16 @@ def train_evaluate_model():
         print(f"Error: Non-numeric columns found after preprocessing: {non_numeric_cols_after_prep}")
         return
     print("Data preprocessing completed.")
+
+    # --- NEW: Save the columns after preprocessing ---
+    print(f"Saving preprocessed feature column names to {MODEL_FEATURES_FILE}")
+    try:
+        with open(MODEL_FEATURES_FILE, 'w') as f:
+            json.dump(X.columns.tolist(), f)
+        print(f"Feature column names saved to {MODEL_FEATURES_FILE}")
+    except Exception as e:
+        print(f"Error occurred while saving feature column names: {e}")
+    # --- END NEW ---
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
     print(f"\nTraining set size: {X_train.shape[0]} rows")

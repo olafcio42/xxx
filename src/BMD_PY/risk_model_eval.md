@@ -6,13 +6,13 @@
 -**Random state:** 42
 
 ## Data Overview
--**Total rows in dataset:** 50819
--**Training set rows:** 38114
--**Test set rows:** 12705
+-**Total rows in dataset:** 51479
+-**Training set rows:** 38609
+-**Test set rows:** 12870
 -**Target column:** `risk_flag_manual`
 -**Class distribution in test set:**
-  -**Class 0:** 95.76%
-  -**Class 1:** 4.24%
+  -**Class 0:** 95.83%
+  -**Class 1:** 4.17%
 
 ## Evaluation Metrics on Test Set
 -**ROC-AUC Score:** 1.0000
@@ -21,36 +21,36 @@
 
 ### Confusion Matrix
 ```
-[[12166     0]
- [    0   539]]
+[[12333     0]
+ [    0   537]]
 ```
 
 ### Classification Report
 ```
               precision    recall  f1-score   support
 
-           0       1.00      1.00      1.00     12166
-           1       1.00      1.00      1.00       539
+           0       1.00      1.00      1.00     12333
+           1       1.00      1.00      1.00       537
 
-    accuracy                           1.00     12705
-   macro avg       1.00      1.00      1.00     12705
-weighted avg       1.00      1.00      1.00     12705
+    accuracy                           1.00     12870
+   macro avg       1.00      1.00      1.00     12870
+weighted avg       1.00      1.00      1.00     12870
 
 ```
 
 ## Feature Importance
 The top 10 most important features are:
 ```
-avg_tx_amount                0.131167
-ip_risk_score                0.123343
-device_change_freq           0.100454
-tx_amount                    0.098125
-std_tx_amount_user           0.088076
-location_change_freq         0.086634
-geo_distance_delta           0.065240
-is_vpn                       0.062957
-avg_tx_hour_user             0.046165
-has_recent_password_reset    0.026757
+device_change_freq         0.171987
+std_tx_amount_user         0.129922
+location_change_freq       0.116489
+tx_amount                  0.116381
+ip_risk_score              0.113941
+avg_tx_amount              0.068757
+login_time_pattern_hour    0.049770
+avg_tx_hour_user           0.045573
+geo_distance_delta         0.044898
+is_vpn                     0.029830
 ```
 
 ## Next Steps & Considerations

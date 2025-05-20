@@ -2,7 +2,7 @@
 
 This document outlines the machine learning project for behavioral authentication, covering data generation, feature schema, model training, and evaluation.
 
-## 1. Data Generation (`synthetic_behavioral_data.csv`)
+## 1. Data Generation (`synthetic_behavioral_data_harder.csv`)
 Synthetic behavioral transaction data is generated to simulate normal and anomalous user activities.
 -**Number of Normal Users:** 1000
 -**Number of Anomalous Users:** 100
