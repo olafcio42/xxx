@@ -3,6 +3,8 @@ mod adds;
 mod api;
 pub mod etl;
 
+mod stress_tests;
+
 //External imports
 use adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use anyhow::{Result, Context};
@@ -341,4 +343,6 @@ mod tests {
 
         Ok(())
     }
+
+
 }

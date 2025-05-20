@@ -5,6 +5,7 @@
 //Public modules
 pub mod adds;
 pub mod etl;
+pub mod stress_tests;
 
 //Re-export commonly used items
 pub use adds::{
