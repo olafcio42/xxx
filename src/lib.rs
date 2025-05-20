@@ -4,8 +4,11 @@
 
 //Public modules
 pub mod adds;
+pub mod api;
 pub mod etl;
 pub mod stress_tests;
+
+pub use api::ApiConfig;
 
 //Re-export commonly used items
 pub use adds::{

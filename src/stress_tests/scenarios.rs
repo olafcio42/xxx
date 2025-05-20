@@ -1,11 +1,10 @@
-// PQC_kyber/src/stress_tests/scenarios.rs
 use std::time::{Duration, Instant};
 use rand::Rng;
-use crate::main; // Załóżmy, że to
+use pqcrypto_kyber::kyber1024;
+use pqcrypto_traits::kem::Ciphertext;
+use crate::adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use super::reporter::StressTestScenarioReport;
 
-
-// Przykładowe dane dla transakcji - dostosuj do swoich potrzeb
 #[derive(Clone, Debug)]
 struct TransactionData {
     id: String,
@@ -26,75 +25,83 @@ impl TransactionData {
     }
 }
 
-// Stałe dla konfiguracji testów
 const DEFAULT_TARGET_TPS_LOW: u64 = 10;
 const DEFAULT_TARGET_TPS_MID: u64 = 30;
 const DEFAULT_TARGET_TPS_HIGH: u64 = 50;
-const DEFAULT_TEST_DURATION_SECS: u64 = 60; // 1 minuta
-const EXTENDED_TEST_DURATION_SECS: u64 = 180; // 3 minuty
-const SHORT_BURST_DURATION_SECS: u64 = 20; // 20 sekund dla testów szczytowych
+const DEFAULT_TEST_DURATION_SECS: u64 = 60;
+const EXTENDED_TEST_DURATION_SECS: u64 = 180;
+const SHORT_BURST_DURATION_SECS: u64 = 20;
 
-/// Symuluje pojedynczą, kompletną transakcję z użyciem PQC Kyber.
-/// Zwraca (czy_sukces, czas_trwania_operacji_ms, rozmiar_zaszyfrowanych_danych_bytes)
-/// W rzeczywistym teście ta funkcja powinna wywoływać Twoje faktyczne operacje PQC i logikę biznesową.
 fn simulate_pqc_transaction(sample_data: &TransactionData) -> (bool, f64, usize) {
     let start_time = Instant::now();
     let mut encrypted_data_size = 0;
 
-    // --- POCZĄTEK: Logika transakcji z PQC Kyber ---
-    // Krok 1: (Opcjonalnie) Generowanie kluczy Kyber, jeśli są specyficzne dla transakcji lub sesji
-    // let (pk, sk) = pqc_kyber::kyber_generate_keys(); // Przykładowe wywołanie
+    // PQC Kyber transaction logic
+    let (public_key, secret_key) = kyber1024::keypair();
 
-    // Krok 2: Szyfrowanie danych (np. klucza symetrycznego lub samego payloadu) za pomocą Kyber KEM
-    // Załóżmy, że szyfrujemy payload
-    match main::kyber_kem_encrypt(&sample_data.payload) { // Przykładowe wywołanie; dostosuj API
-        Ok((ciphertext, shared_secret_kem)) => {
-            encrypted_data_size = ciphertext.len();
-            // Tutaj shared_secret_kem mógłby być użyty do szyfrowania payloadu algorytmem symetrycznym
-            // np. let encrypted_payload = some_symmetric_encrypt(&sample_data.payload, &shared_secret_kem);
+    match encrypt_with_kyber(&public_key, &sample_data.payload) {
+        Ok((ciphertext, shared_secret_enc)) => {
+            encrypted_data_size = ciphertext.as_bytes().len();
 
-            // Krok 3: (Symulacja) Przetwarzanie transakcji, np. zapis do bazy, wysłanie przez sieć
-            // std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(2..10))); // Symulacja pracy
+            match decrypt_with_kyber(&ciphertext, &secret_key) {
+                Ok(shared_secret_dec) => {
+                    let secure_enc = SecureSecret::from_shared(shared_secret_enc);
+                    let secure_dec = SecureSecret::from_shared(shared_secret_dec);
 
-            // Krok 4: (Jeśli dotyczy) Odszyfrowanie odpowiedzi lub danych po drugiej stronie przez odbiorcę
-            match pqc_kyber::kyber_kem_decrypt(&ciphertext) { // Przykładowe wywołanie; dostosuj API
-                Ok(recovered_shared_secret) => {
-                    if recovered_shared_secret == shared_secret_kem {
-                        // Symulacja pomyślnego przetworzenia i weryfikacji
-                        let success = rand::thread_rng().gen_bool(0.99); // 99% szans na sukces operacji biznesowej
-                        (success, start_time.elapsed().as_secs_f64() * 1000.0, encrypted_data_size)
-                    } else {
-                        eprintln!("Błąd KEM: odzyskany shared secret nie pasuje!");
-                        (false, start_time.elapsed().as_secs_f64() * 1000.0, encrypted_data_size)
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Błąd dekapsulacji Kyber: {:?}", e);
+                    // Verify data integrity
+                    let encrypted = sample_data.payload.iter()
+                        .zip(secure_enc.expose().iter().cycle())
+                        .map(|(a, b)| a ^ b)
+                        .collect::<Vec<u8>>();
+
+                    let decrypted = encrypted.iter()
+                        .zip(secure_dec.expose().iter().cycle())
+                        .map(|(a, b)| a ^ b)
+                        .collect::<Vec<u8>>();
+
+                    let success = decrypted == sample_data.payload;
+                    (success, start_time.elapsed().as_secs_f64() * 1000.0, encrypted_data_size)
+                },
+                Err(_) => {
+                    println!("→ Time: 2025-05-20 19:16:33");
+                    println!("→ User: olafcio42");
+                    println!("→ Error: Kyber decapsulation failed");
                     (false, start_time.elapsed().as_secs_f64() * 1000.0, encrypted_data_size)
                 }
             }
-        }
-        Err(e) => {
-            eprintln!("Błąd enkapsulacji Kyber: {:?}", e);
+        },
+        Err(_) => {
+            println!("→ Time: 2025-05-20 19:16:33");
+            println!("→ User: olafcio42");
+            println!("→ Error: Kyber encapsulation failed");
             (false, start_time.elapsed().as_secs_f64() * 1000.0, 0)
         }
     }
-    // --- KONIEC: Logika transakcji z PQC Kyber ---
 }
 
+fn encrypt_with_kyber(public_key: &kyber1024::PublicKey, data: &[u8]) -> Result<(kyber1024::Ciphertext, kyber1024::SharedSecret), &'static str> {
+    let (shared_secret, ciphertext) = kyber1024::encapsulate(public_key);
+    Ok((ciphertext, shared_secret))
+}
 
-/// Uruchamia generyczny scenariusz testu obciążeniowego.
+fn decrypt_with_kyber(ciphertext: &kyber1024::Ciphertext, secret_key: &kyber1024::SecretKey) -> Result<kyber1024::SharedSecret, &'static str> {
+    Ok(kyber1024::decapsulate(ciphertext, secret_key))
+}
+
 fn run_scenario(
     scenario_name: String,
     target_tps: u64,
     duration_secs: u64,
     payload_size_bytes: usize,
-    variable_load_pattern: Option<fn(elapsed_secs: u64) -> u64>, // Dla testów ze zmiennym obciążeniem
+    variable_load_pattern: Option<fn(elapsed_secs: u64) -> u64>,
 ) -> StressTestScenarioReport {
-    println!(
-        "Rozpoczynanie scenariusza: \"{}\" (Cel TPS: {}, Czas trwania: {}s, Rozmiar payloadu: {}B)",
-        scenario_name, target_tps, duration_secs, payload_size_bytes
-    );
+    println!("\n=== Starting Scenario: {} ===", scenario_name);
+    println!("→ Time: 2025-05-20 19:16:33");
+    println!("→ User: olafcio42");
+    println!("→ Target TPS: {}", target_tps);
+    println!("→ Duration: {}s", duration_secs);
+    println!("→ Payload size: {}B", payload_size_bytes);
+
     let mut report = StressTestScenarioReport::new(scenario_name.clone());
     let mut transaction_times_ms: Vec<f64> = Vec::new();
     let mut successful_tx_count = 0;
@@ -105,16 +112,14 @@ fn run_scenario(
     let test_end_time = scenario_start_time + Duration::from_secs(duration_secs);
     let mut current_tx_count: u64 = 0;
 
-    // Pętla główna testu
     while Instant::now() < test_end_time {
         let elapsed_secs_total = scenario_start_time.elapsed().as_secs();
         let current_target_tps = variable_load_pattern
             .map_or(target_tps, |pattern| pattern(elapsed_secs_total));
 
-        // Prosty mechanizm kontroli tempa (pacing)
         let expected_tx_so_far = (elapsed_secs_total + 1) * current_target_tps;
         if current_tx_count >= expected_tx_so_far && current_target_tps > 0 {
-            std::thread::sleep(Duration::from_millis(50)); // Daj systemowi odetchnąć lub poczekaj na następną sekundę
+            std::thread::sleep(Duration::from_millis(50));
             continue;
         }
 
@@ -130,11 +135,10 @@ fn run_scenario(
         }
         current_tx_count += 1;
 
-        // Wstrzymaj pętlę, aby próbować utrzymać docelowe TPS
         if current_target_tps > 0 {
             let sleep_interval_us = (1_000_000.0 / current_target_tps as f64) as u64;
-            if sleep_interval_us > (time_taken_ms * 1000.0) as u64 { // Jeśli operacja była szybsza niż interwał
-                std::thread::sleep(Duration::from_micros(sleep_interval_us - (time_taken_ms * 1000.0) as u64 ));
+            if sleep_interval_us > (time_taken_ms * 1000.0) as u64 {
+                std::thread::sleep(Duration::from_micros(sleep_interval_us - (time_taken_ms * 1000.0) as u64));
             }
         }
     }
@@ -143,117 +147,128 @@ fn run_scenario(
     report.successful_transactions = successful_tx_count;
     report.failed_transactions = failed_tx_count;
     report.total_transactions = successful_tx_count + failed_tx_count;
-    report.calculate_metrics(&transaction_times_ms, actual_duration); // Oblicza m.in. średni czas, % sukcesu, TPS
+    report.calculate_metrics(&transaction_times_ms, actual_duration);
 
-    println!(
-        "Zakończono scenariusz: \"{}\". Sukces: {}, Błędy: {}, Śr. czas: {:.2}ms, Osiągnięte TPS: {:.2}, Śr. rozmiar szyfr.: {}B",
-        report.scenario_name,
-        report.successful_transactions,
-        report.failed_transactions,
-        report.average_transaction_time_ms,
-        report.transactions_per_second_achieved,
-        if successful_tx_count > 0 { total_encrypted_data_bytes / successful_tx_count as usize } else { 0 }
-    );
+    println!("\n=== Scenario Complete: {} ===", scenario_name);
+    println!("→ Time: 2025-05-20 19:16:33");
+    println!("→ User: olafcio42");
+    println!("→ Successful transactions: {}", successful_tx_count);
+    println!("→ Failed transactions: {}", failed_tx_count);
+    println!("→ Average time: {:.2}ms", report.average_transaction_time_ms);
+    println!("→ Achieved TPS: {:.2}", report.transactions_per_second_achieved);
+    println!("→ Average encrypted size: {}B",
+             if successful_tx_count > 0 { total_encrypted_data_bytes / successful_tx_count as usize } else { 0 });
+
     report
 }
 
-/// Definicja wzorca zmiennego obciążenia: np. sinusoida lub schodkowa
 fn variable_load_sine_pattern(elapsed_secs: u64) -> u64 {
-    let period_secs = 60.0; // Okres funkcji sinusoidalnej
+    let period_secs = 60.0;
     let min_tps = 5.0;
-    let max_tps = DEFAULT_TARGET_TPS_HIGH as f64; // Max 50 TPS
+    let max_tps = DEFAULT_TARGET_TPS_HIGH as f64;
     let amplitude = (max_tps - min_tps) / 2.0;
     let vertical_shift = min_tps + amplitude;
     let tps = vertical_shift + amplitude * (2.0 * std::f64::consts::PI * elapsed_secs as f64 / period_secs).sin();
-    tps.max(1.0) as u64 // Zapewnij co najmniej 1 TPS
+    tps.max(1.0) as u64
 }
 
-
-/// Uruchamia wszystkie zdefiniowane scenariusze testów obciążeniowych i wydajnościowych.
 pub fn run_all_stress_test_scenarios() -> super::reporter::OverallStressTestReport {
+    println!("\n=== Starting PQC Kyber Stress Test Suite ===");
+    println!("→ Time: 2025-05-20 19:16:33");
+    println!("→ User: olafcio42");
+
     let mut overall_report = super::reporter::OverallStressTestReport::default();
-    let default_payload_size = 1024; // 1KB
-    let large_payload_size = 1024 * 100; // 100KB
+    let default_payload_size = 1024;
+    let large_payload_size = 1024 * 100;
 
-    println!("Rozpoczynanie serii testów PQC Kyber...");
-
-    // Scenariusz 1: Obciążenie bazowe (niski TPS, standardowy czas)
+    // Scenario 1: Base Load
     overall_report.add_report(run_scenario(
-        "1. Obciążenie Bazowe (10 TPS)".to_string(),
+        "1. Base Load (10 TPS)".to_string(),
         DEFAULT_TARGET_TPS_LOW,
         DEFAULT_TEST_DURATION_SECS,
         default_payload_size,
         None,
     ));
 
-    // Scenariusz 2: Obciążenie szczytowe (wysoki TPS, standardowy czas)
+    // Scenario 2: Peak Load
     overall_report.add_report(run_scenario(
-        "2. Obciążenie Szczytowe (50 TPS)".to_string(),
+        "2. Peak Load (50 TPS)".to_string(),
         DEFAULT_TARGET_TPS_HIGH,
         DEFAULT_TEST_DURATION_SECS,
         default_payload_size,
         None,
     ));
 
-    // Scenariusz 3: Długotrwałe średnie obciążenie
+    // Scenario 3: Extended Medium Load
     overall_report.add_report(run_scenario(
-        "3. Długotrwałe Średnie Obciążenie (30 TPS, 3 min)".to_string(),
+        "3. Extended Medium Load (30 TPS, 3 min)".to_string(),
         DEFAULT_TARGET_TPS_MID,
         EXTENDED_TEST_DURATION_SECS,
         default_payload_size,
         None,
     ));
 
-    // Scenariusz 4: Test maksymalnej przepustowości (krótki impuls, bardzo wysoki docelowy TPS)
-    // Celem jest zobaczyć, ile system faktycznie obsłuży.
+    // Scenario 4: Maximum Throughput Test
     overall_report.add_report(run_scenario(
-        "4. Test Maksymalnej Przepustowości (Burst 100 TPS, 20s)".to_string(),
-        100, // Docelowo bardzo wysoko
+        "4. Maximum Throughput Test (Burst 100 TPS, 20s)".to_string(),
+        100,
         SHORT_BURST_DURATION_SECS,
         default_payload_size,
         None,
     ));
 
-    // Scenariusz 5: Test opóźnień pod stałym, średnim obciążeniem
-    // Tutaj raport z percentylami opóźnień (np. p95, p99) z `StressTestScenarioReport` będzie kluczowy.
+    // Scenario 5: Latency Test
     overall_report.add_report(run_scenario(
-        "5. Test Opóźnień (Stacjonarne 25 TPS)".to_string(),
+        "5. Latency Test (Stable 25 TPS)".to_string(),
         25,
         DEFAULT_TEST_DURATION_SECS,
         default_payload_size,
         None,
     ));
 
-    // Scenariusz 6: Test ze zmiennym obciążeniem (np. wzorzec sinusoidalny)
+    // Scenario 6: Variable Load Test
     overall_report.add_report(run_scenario(
-        "6. Test ze Zmiennym Obciążeniem (Sinusoida 5-50 TPS)".to_string(),
-        DEFAULT_TARGET_TPS_HIGH, // Max TPS dla wzorca
+        "6. Variable Load Test (Sine 5-50 TPS)".to_string(),
+        DEFAULT_TARGET_TPS_HIGH,
         EXTENDED_TEST_DURATION_SECS,
         default_payload_size,
         Some(variable_load_sine_pattern),
     ));
 
-    // Scenariusz 7: Test z dużymi payloadami pod średnim obciążeniem
+    // Scenario 7: Large Payload Test
     overall_report.add_report(run_scenario(
-        "7. Test z Dużymi Payloadami (100KB, 15 TPS)".to_string(),
+        "7. Large Payload Test (100KB, 15 TPS)".to_string(),
         15,
         DEFAULT_TEST_DURATION_SECS,
         large_payload_size,
         None,
     ));
 
-    // Scenariusz X: Symulacja błędów sieciowych (konceptualne)
-    // To wymagałoby integracji z narzędziami do symulacji awarii sieci (np. toxiproxy, tc)
-    // lub modyfikacji `simulate_pqc_transaction` aby losowo symulowało błędy I/O.
-    // Na razie jako placeholder:
-    println!("Scenariusz symulacji błędów sieciowych jest koncepcyjny i wymaga zewnętrznych narzędzi lub rozbudowy `simulate_pqc_transaction`.");
+    // Network Failure Simulation (Conceptual)
     let mut network_failure_report = StressTestScenarioReport::new(
-        "8. Symulacja Błędów Sieciowych (Koncepcyjny)".to_string()
+        "8. Network Failure Simulation (Conceptual)".to_string()
     );
-    network_failure_report.notes = Some("Scenariusz nie został w pełni wykonany; wymaga dodatkowej infrastruktury testowej.".to_string());
+    network_failure_report.notes = Some("Scenario requires additional test infrastructure.".to_string());
     overall_report.add_report(network_failure_report);
 
 
-    overall_report.finalize_report(); // Oblicza zagregowane metryki
+    println!("\n=== Stress Test Suite Complete ===");
+    println!("→ Time: 2025-05-20 19:16:33");
+    println!("→ User: olafcio42");
+
     overall_report
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transaction_simulation() {
+        let test_data = TransactionData::new_random(1024);
+        let (success, time_ms, size) = simulate_pqc_transaction(&test_data);
+        assert!(success, "Transaction simulation should succeed");
+        assert!(time_ms > 0.0, "Transaction time should be positive");
+        assert!(size > 0, "Encrypted data size should be positive");
+    }
 }
