@@ -1,6 +1,7 @@
 mod scenarios;
 mod reporter;
 
+
 use crate::adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
 use crate::etl::pipeline::ETLPipeline;
 use crate::api::ApiConfig;
@@ -10,14 +11,17 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::Semaphore;
 use futures::future::join_all;
 use anyhow::Result;
+use chrono::Utc;
 use pqcrypto_kyber::kyber1024;
 use rand::Rng;
 
-const STRESS_TEST_DURATION: Duration = Duration::from_secs(300); // 5 minutes
-const TARGET_TPS: u32 = 1050; // Target transactions per second
+const STRESS_TEST_DURATION: Duration = Duration::from_secs(300); //5min test duration
+const TARGET_TPS: u32 = 1050;
 const CONCURRENT_CONNECTIONS: u32 = 200;
 const TEST_SCENARIOS: u32 = 57;
-
+fn get_formatted_time() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
 #[derive(Debug)]
 pub struct PerformanceMetrics {
     pub total_transactions: u64,
@@ -48,19 +52,16 @@ async fn run_stress_test_scenario(
     let _permit = semaphore.acquire().await?;
     let start = Instant::now();
 
-    // Generate test transaction
     let (public_key, secret_key) = kyber1024::keypair();
     let test_data = format!("Stress test transaction {}", scenario_id);
 
-    // Simulate network conditions
+    //Simulate network latency
     if scenario_id % 5 == 0 {
         tokio::time::sleep(Duration::from_millis(rand::random::<u64>() % 1000)).await;
     }
 
-    // Execute transaction with metrics
     let result = process_test_transaction(test_data, &public_key, &secret_key).await;
     let duration = start.elapsed().as_millis() as usize;
-
     metrics.fetch_add(duration, Ordering::SeqCst);
 
     Ok(())
@@ -68,7 +69,7 @@ async fn run_stress_test_scenario(
 
 pub async fn execute_stress_test() -> Result<StressTestResults> {
     println!("=== Starting Comprehensive Stress Test ===");
-    println!("→ Time: 2025-05-20 19:14:05");
+    println!("→ Time: {}", get_formatted_time());
     println!("→ User: olafcio42");
     println!("→ Target TPS: {}", TARGET_TPS);
     println!("→ Test Duration: {} seconds", STRESS_TEST_DURATION.as_secs());
@@ -81,10 +82,9 @@ pub async fn execute_stress_test() -> Result<StressTestResults> {
     let mut network_failures = 0;
     let mut latency_spikes = 0;
 
-    // Initialize ETL Pipeline for stress testing
+    //Initialize ETL Pipeline
     let mut pipeline = ETLPipeline::new(1000, kyber1024::keypair().0);
 
-    // Generate test scenarios
     for scenario_id in 0..TEST_SCENARIOS {
         let sem_clone = semaphore.clone();
         let metrics_clone = total_metrics.clone();
@@ -98,10 +98,7 @@ pub async fn execute_stress_test() -> Result<StressTestResults> {
         tasks.push(task);
     }
 
-    // Execute all scenarios
     let results = join_all(tasks).await;
-
-    // Calculate test results
     let successful_tasks: u32 = results.iter()
         .filter(|r| r.as_ref().map_or(false, |&x| x))
         .count() as u32;
@@ -109,7 +106,6 @@ pub async fn execute_stress_test() -> Result<StressTestResults> {
     let total_duration = start_time.elapsed();
     let avg_latency = total_metrics.load(Ordering::SeqCst) as f64 / TEST_SCENARIOS as f64;
 
-    // Generate performance metrics
     let performance_metrics = PerformanceMetrics {
         total_transactions: TEST_SCENARIOS as u64,
         successful_transactions: successful_tasks as u64,
@@ -119,7 +115,7 @@ pub async fn execute_stress_test() -> Result<StressTestResults> {
         min_latency_ms: 10,
         tps_achieved: successful_tasks as f64 / total_duration.as_secs_f64(),
         error_rate: (TEST_SCENARIOS - successful_tasks) as f64 / TEST_SCENARIOS as f64,
-        timestamp: "2025-05-20 19:14:05".to_string(),
+        timestamp: get_formatted_time(),
     };
 
     let results = StressTestResults {
@@ -131,13 +127,12 @@ pub async fn execute_stress_test() -> Result<StressTestResults> {
     };
 
     print_stress_test_summary(&results);
-
     Ok(results)
 }
 
 fn print_stress_test_summary(results: &StressTestResults) {
     println!("\n=== Stress Test Summary ===");
-    println!("→ Time: 2025-05-20 19:14:05");
+    println!("→ Time: {}", get_formatted_time());
     println!("→ User: olafcio42");
     println!("\nPerformance Metrics:");
     println!("→ Total Transactions: {}", results.performance_metrics.total_transactions);
@@ -158,7 +153,7 @@ async fn process_test_transaction(
     public_key: &kyber1024::PublicKey,
     secret_key: &kyber1024::SecretKey,
 ) -> Result<()> {
-    // Simulate transaction processing
+    //Encrypt and decrypt test data
     let (shared_secret_enc, ciphertext) = kyber1024::encapsulate(public_key);
     let shared_secret_dec = kyber1024::decapsulate(&ciphertext, secret_key);
 
@@ -180,7 +175,6 @@ async fn process_test_transaction(
         .collect::<Vec<u8>>();
 
     assert_eq!(transaction_bytes, decrypted, "Transaction data integrity check failed!");
-
     Ok(())
 }
 
@@ -191,7 +185,7 @@ mod tests {
     #[tokio::test]
     async fn test_stress_test_execution() -> Result<()> {
         println!("=== Starting Stress Test Suite ===");
-        println!("→ Time: 2025-05-20 19:14:05");
+        println!("→ Time: {}", get_formatted_time());
         println!("→ User: olafcio42");
 
         let results = execute_stress_test().await?;
@@ -223,7 +217,6 @@ mod tests {
             .count();
 
         assert!(failures < 50, "Too many failures under high concurrency");
-
         Ok(())
     }
 }
