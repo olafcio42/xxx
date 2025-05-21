@@ -3,14 +3,16 @@ use pqcrypto_kyber::kyber1024::*;
 use rand::RngCore;
 use rsa::{RsaPrivateKey, RsaPublicKey, Pkcs1v15Encrypt, rand_core::OsRng};
 use p256::{SecretKey as P256SecretKey, PublicKey as P256PublicKey, ecdh::EphemeralSecret};
-use chrono::Utc;
+use chrono::{Utc, DateTime};
 
-// Metadata
-const BENCHMARK_METADATA: &str = "
-Benchmark Information:
-Date: 2025
-User: olafcio42
-";
+// Dynamic metadata using a function to generate the string
+fn get_benchmark_metadata() -> String {
+    format!(
+        "\nBenchmark Information:\nDate: {}\nUser: {}\n",
+        Utc::now().format("%Y-%m-%d %H:%M:%S"),
+        "olafcio42"  // Using the provided user login
+    )
+}
 
 fn generate_test_data() -> Vec<u8> {
     let mut rng = rand::thread_rng();
@@ -55,16 +57,17 @@ fn rsa_benchmarks(c: &mut Criterion) {
     //Encryption benchmark
     let private_key = RsaPrivateKey::new(&mut OsRng, 2048).unwrap();
     let public_key = RsaPublicKey::from(&private_key);
-    let test_data = b"Confidential transaction data - 2025";
+    let timestamp = Utc::now().format("%Y").to_string();
+    let test_data = format!("Confidential transaction data - {}", timestamp).into_bytes();
 
     group.bench_function("Encryption", |b| {
         b.iter(|| {
-            public_key.encrypt(&mut OsRng, Pkcs1v15Encrypt, black_box(test_data)).unwrap()
+            public_key.encrypt(&mut OsRng, Pkcs1v15Encrypt, black_box(&test_data)).unwrap()
         })
     });
 
     //Decryption benchmark
-    let ciphertext = public_key.encrypt(&mut OsRng, Pkcs1v15Encrypt, test_data).unwrap();
+    let ciphertext = public_key.encrypt(&mut OsRng, Pkcs1v15Encrypt, &test_data).unwrap();
     group.bench_function("Decryption", |b| {
         b.iter(|| {
             private_key.decrypt(Pkcs1v15Encrypt, black_box(&ciphertext)).unwrap()
@@ -103,7 +106,7 @@ fn ecc_p256_benchmarks(c: &mut Criterion) {
 }
 
 fn print_benchmark_info() {
-    println!("{}", BENCHMARK_METADATA);
+    println!("{}", get_benchmark_metadata());
 }
 
 criterion_group! {
