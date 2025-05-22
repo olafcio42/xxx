@@ -26,6 +26,7 @@ mimalloc = "0.1"
 metrics = "0.20"
 tracing = "0.1"
 thiserror = "2.0.12"
+zeroize = "1.8.1"
 
 [dev-dependencies]
 criterion = "0.5.1"
