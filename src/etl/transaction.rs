@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use crate::config::get_formatted_timestamp;
 
 //Represents a financial transaction with validation capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8,16 +9,17 @@ pub struct Transaction {
     pub amount: f64,                 //Transaction amount
     pub currency: String,            //Currency code
     pub encrypted_payload: Vec<u8>,  //Additional encrypted data
-    pub id: String,                  //Unique transaction identifier
+    pub id: String,                 //Unique transaction identifier
     pub validated: bool,             //Validation status flag
 }
 
 impl Transaction {
     //Creates a new transaction with generated ID
     pub fn new(source_account: String, target_account: String, amount: f64, currency: String) -> Self {
+        let timestamp = get_formatted_timestamp();
         let id = format!(
             "TXN_{}_{}_{}",
-            chrono::Utc::now().format("%Y%m%d%H%M%S"),
+            timestamp.replace(" ", "").replace("-", "").replace(":", ""),
             if source_account.len() >= 8 { &source_account[..8] } else { &source_account },
             if target_account.len() >= 8 { &target_account[..8] } else { &target_account }
         );

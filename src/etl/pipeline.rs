@@ -14,11 +14,9 @@ use std::time::Instant;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
 use chrono::Utc;
+use crate::config::{get_formatted_timestamp, get_current_user};
 
-//Returns current timestamp in formatted string
-fn get_formatted_timestamp() -> String {
-    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
-}
+
 
 //Main ETL pipeline for processing transactions
 pub struct ETLPipeline {
@@ -45,7 +43,7 @@ impl ETLPipeline {
     pub async fn process_transactions(&mut self, transactions: Vec<Transaction>) -> Result<BatchMetrics> {
         println!("\n[Starting ETL Pipeline]");
         println!("-> Time: {}", get_formatted_timestamp());
-        println!("-> User: olafcio42");
+        println!("-> User: {}", get_current_user());
         println!("-> Total transactions to process: {}", transactions.len());
 
         let start = Instant::now();

@@ -6,7 +6,8 @@
 pub mod adds;
 pub mod api;
 pub mod etl;
-pub mod stress_tests;
+pub mod data_generator;
+pub mod config;
 
 pub use api::ApiConfig;
 
