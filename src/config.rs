@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
@@ -28,7 +28,6 @@ pub fn get_current_user() -> String {
         .clone()
 }
 
-// Tylko user może być zmieniany
 pub fn initialize_config(user: Option<String>) {
     if let Some(u) = user {
         SYSTEM_CONFIG.lock().unwrap().user = u;

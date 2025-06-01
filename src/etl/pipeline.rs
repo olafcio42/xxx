@@ -1,12 +1,9 @@
-//ETL Pipeline Implementation
-//Author: olafcio42
-//Last Modified: 2025-05-08 18:27:02
-
 use super::{
+    batch::TransactionBatch,
     transaction::Transaction,
-    metrics::BatchMetrics,
-    batch::TransactionBatch
+    metrics::BatchMetrics
 };
+
 use pqcrypto_traits::kem::PublicKey;
 use tokio::sync::mpsc;
 use anyhow::Result;

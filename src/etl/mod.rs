@@ -6,4 +6,3 @@ pub mod pipeline;    //ETL pipeline implementation
 
 //Private modules
 mod etl_tests;      //Internal testing utilities
-
