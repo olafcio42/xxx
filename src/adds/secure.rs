@@ -1,6 +1,6 @@
 use pqcrypto_traits::kem::SharedSecret as SharedSecretTrait;
 use secrecy::{Secret, ExposeSecret, Zeroize};
-use zeroize::{ ZeroizeOnDrop};
+use zeroize::ZeroizeOnDrop;
 use std::fmt;
 use crate::config::{get_formatted_timestamp, get_current_user};
 

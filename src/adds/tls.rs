@@ -1,194 +1,237 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
-use pqcrypto_kyber::kyber1024::{
-    keypair,
-    PublicKey as KyberPublicKey,
-    SecretKey as KyberSecretKey,
-};
-use rand::RngCore;
-use parking_lot::RwLock;
+use anyhow::{Result, anyhow};
+use crate::adds::secure::SecureSecret;
 use std::sync::Arc;
-use std::time::Duration;
-use crate::config::{get_formatted_timestamp, get_current_user};
+use parking_lot::RwLock;
+use crate::config;
+use uuid::Uuid;
+use futures::executor::block_on;
 
-// Cache kluczy Kyber
-pub struct KeyCache {
-    keypairs: Arc<RwLock<Vec<(KyberPublicKey, KyberSecretKey)>>>,
-    max_size: usize,
-}
-
-impl KeyCache {
-    pub fn new(max_size: usize) -> Self {
-        Self {
-            keypairs: Arc::new(RwLock::new(Vec::with_capacity(max_size))),
-            max_size,
-        }
-    }
-
-    pub fn get_keypair(&self) -> Option<(KyberPublicKey, KyberSecretKey)> {
-        self.keypairs.write().pop()
-    }
-
-    pub fn add_keypair(&self, keypair: (KyberPublicKey, KyberSecretKey)) {
-        let mut cache = self.keypairs.write();
-        if cache.len() < self.max_size {
-            cache.push(keypair);
-        }
-    }
-
-    pub async fn prefill(&self) {
-        let mut cache = self.keypairs.write();
-        while cache.len() < self.max_size {
-            cache.push(keypair());
-        }
-    }
-}
+// Stałe dla TLS
+const TLS_VERSION: &str = "1.3";
+const MAX_HANDSHAKE_ATTEMPTS: u32 = 3;
+const SESSION_TIMEOUT_SECS: i64 = 3600; // 1 godzina
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TlsState {
     Initial,
-    HandshakeStarted,
-    KeyExchangeCompleted,
-    Established,
-    Closing,
-    Closed,
+    Handshaking,
+    Connected,
+    Error,
+    Closed
+}
+
+#[derive(Debug, Clone)]
+pub enum TlsError {
+    HandshakeFailed(String),
+    ConnectionClosed,
+    Timeout,
+    InvalidState,
+    SecurityError(String)
 }
 
 #[derive(Debug, Clone)]
 pub struct TlsMetrics {
-    pub handshake_duration: Duration,
-    pub key_exchange_duration: Duration,
-    pub operations_count: u64,
+    pub handshake_attempts: u32,
     pub bytes_sent: u64,
     pub bytes_received: u64,
-    pub last_activity: DateTime<Utc>,
+    last_activity: DateTime<Utc>,
 }
 
-impl Default for TlsMetrics {
-    fn default() -> Self {
+impl TlsMetrics {
+    fn new() -> Self {
         Self {
-            handshake_duration: Duration::from_secs(0),
-            key_exchange_duration: Duration::from_secs(0),
-            operations_count: 0,
+            handshake_attempts: 0,
             bytes_sent: 0,
             bytes_received: 0,
             last_activity: Utc::now(),
         }
     }
+
+    fn update_activity(&mut self) {
+        self.last_activity = Utc::now();
+    }
+
+    fn increment_handshake(&mut self) {
+        self.handshake_attempts += 1;
+    }
 }
 
 pub struct TlsSession {
-    id: String,
     state: TlsState,
+    metrics: Arc<RwLock<TlsMetrics>>,
+    session_id: String,
     created_at: DateTime<Utc>,
-    last_renewed: DateTime<Utc>,
-    client_random: Vec<u8>,
-    server_random: Vec<u8>,
-    kyber_keypair: Option<(KyberPublicKey, KyberSecretKey)>,
-    shared_secret: Option<Vec<u8>>,
-    metrics: TlsMetrics,
-    session_timeout: Duration,
-    user: String,
-    timestamp: String,
-    key_cache: KeyCache,
+    secret: SecureSecret,
 }
 
 impl TlsSession {
     pub fn new() -> Self {
-        let current_time = Utc::now();
-        let session_id = format!("TLS_{}", rand::random::<u32>());
+        let created_at = Utc::now();
+        let session_id = format!("TLS_{}_{}_{}",
+                                 config::get_current_user(),
+                                 created_at.timestamp(),
+                                 Uuid::new_v4().simple()
+        );
 
         Self {
-            id: session_id,
             state: TlsState::Initial,
-            created_at: current_time,
-            last_renewed: current_time,
-            client_random: Vec::new(),
-            server_random: Vec::new(),
-            kyber_keypair: None,
-            shared_secret: None,
-            metrics: TlsMetrics::default(),
-            session_timeout: Duration::from_secs(3600),
-            user: get_current_user(),
-            timestamp: get_formatted_timestamp(),
-            key_cache: KeyCache::new(10),
+            metrics: Arc::new(RwLock::new(TlsMetrics::new())),
+            session_id,
+            created_at,
+            secret: SecureSecret::from_bytes(&[]),
         }
+    }
+
+    pub fn get_session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn get_state(&self) -> TlsState {
+        self.state.clone()
+    }
+
+    pub fn get_metrics(&self) -> TlsMetrics {
+        self.metrics.read().clone()
+    }
+
+    pub fn get_session_age(&self) -> chrono::Duration {
+        Utc::now() - self.created_at
     }
 
     pub async fn begin_handshake(&mut self) -> Result<()> {
-        println!("\n[Starting TLS Handshake]");
-        println!("→ User: {}", self.user);
-        println!("→ Timestamp: {}", get_formatted_timestamp());
-
-        let start_time = Utc::now();
-
-        // Generowanie losowych danych
-        let mut client_random = vec![0u8; 32];
-        rand::thread_rng().fill_bytes(&mut client_random);
-        self.client_random = client_random;
-
-        let mut server_random = vec![0u8; 32];
-        rand::thread_rng().fill_bytes(&mut server_random);
-        self.server_random = server_random;
-
-        // Użycie cache'owanych kluczy lub wygenerowanie nowych
-        self.kyber_keypair = self.key_cache.get_keypair().or_else(|| Some(keypair()));
-
-        let key_gen_duration = Utc::now().signed_duration_since(start_time).to_std()?;
-
-        self.state = TlsState::HandshakeStarted;
-        self.metrics.operations_count += 1;
-        self.metrics.key_exchange_duration = key_gen_duration;
-
-        self.update_session_time()?;
-
-        // Asynchroniczne uzupełnienie cache'a
-        self.key_cache.prefill().await;
-
-        Ok(())
-    }
-
-    pub fn update_session_time(&mut self) -> Result<bool> {
-        let current_time = Utc::now();
-        self.metrics.last_activity = current_time;
-        self.timestamp = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
-
-        if current_time.signed_duration_since(self.last_renewed)
-            .to_std()
-            .unwrap_or(Duration::from_secs(0)) > self.session_timeout {
-            self.state = TlsState::Closed;
-            println!("⚠! Session timed out after {:?}", self.session_timeout);
-            return Ok(false);
+        if self.state != TlsState::Initial {
+            return Err(anyhow!("Invalid state for handshake: {:?}", self.state));
         }
 
+        let mut metrics = self.metrics.write();
+        metrics.increment_handshake();
+
+        if metrics.handshake_attempts > MAX_HANDSHAKE_ATTEMPTS {
+            self.state = TlsState::Error;
+            return Err(anyhow!("Maximum handshake attempts exceeded"));
+        }
+
+        self.state = TlsState::Handshaking;
+        metrics.update_activity();
+
+        // Symulacja handshake
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        if self.perform_handshake().await? {
+            self.state = TlsState::Connected;
+            Ok(())
+        } else {
+            self.state = TlsState::Error;
+            Err(anyhow!("Handshake failed"))
+        }
+    }
+
+    async fn perform_handshake(&self) -> Result<bool> {
+        // Tutaj będzie właściwa implementacja handshake
+        // Na razie zwracamy true dla symulacji
         Ok(true)
     }
 
-    pub fn close(&mut self) -> Result<()> {
-        println!("\n[X Closing TLS Session]");
-        println!("→ Session ID: {}", self.id);
-        println!("→ User: {}", self.user);
+    pub async fn send_data(&mut self, data: &[u8]) -> Result<usize> {
+        if self.state != TlsState::Connected {
+            return Err(anyhow!("Connection not established"));
+        }
 
-        // Bezpieczne czyszczenie danych
-        self.shared_secret = None;
-        self.kyber_keypair = None;
-        self.client_random.clear();
-        self.server_random.clear();
+        let mut metrics = self.metrics.write();
+        metrics.bytes_sent += data.len() as u64;
+        metrics.update_activity();
+
+        // Symulacja wysyłania danych
+        Ok(data.len())
+    }
+
+    pub async fn receive_data(&mut self, buffer: &mut [u8]) -> Result<usize> {
+        if self.state != TlsState::Connected {
+            return Err(anyhow!("Connection not established"));
+        }
+
+        let mut metrics = self.metrics.write();
+        metrics.bytes_received += buffer.len() as u64;
+        metrics.update_activity();
+
+        // Symulacja odbierania danych
+        Ok(buffer.len())
+    }
+
+    pub async fn close(&mut self) -> Result<()> {
+        if self.state == TlsState::Closed {
+            return Ok(());
+        }
 
         self.state = TlsState::Closed;
-        self.print_metrics();
         Ok(())
     }
 
-    pub fn print_metrics(&self) {
-        println!("\n[|||| TLS Session Metrics]");
-        println!("→ Session ID: {}", self.id);
-        println!("→ User: {}", self.user);
-        println!("→ Timestamp: {}", self.timestamp);
-        println!("→ Handshake duration: {:?}", self.metrics.handshake_duration);
-        println!("→ Key exchange duration: {:?}", self.metrics.key_exchange_duration);
-        println!("→ Total operations: {}", self.metrics.operations_count);
-        println!("→ Total bytes sent: {}", self.metrics.bytes_sent);
-        println!("→ Total bytes received: {}", self.metrics.bytes_received);
+    pub fn is_session_expired(&self) -> bool {
+        let age = self.get_session_age();
+        age.num_seconds() > SESSION_TIMEOUT_SECS
+    }
+}
+
+impl Drop for TlsSession {
+    fn drop(&mut self) {
+        if self.state != TlsState::Closed {
+            // Próbujemy zamknąć sesję, ignorujemy błędy
+            let _ = block_on(self.close());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio;
+
+    #[tokio::test]
+    async fn test_session_creation() {
+        let session = TlsSession::new();
+        assert_eq!(session.get_state(), TlsState::Initial);
+        assert!(!session.get_session_id().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_handshake() {
+        let mut session = TlsSession::new();
+        assert!(session.begin_handshake().await.is_ok());
+        assert_eq!(session.get_state(), TlsState::Connected);
+    }
+
+    #[tokio::test]
+    async fn test_session_metrics() {
+        let mut session = TlsSession::new();
+        session.begin_handshake().await.unwrap();
+
+        let metrics = session.get_metrics();
+        assert_eq!(metrics.handshake_attempts, 1);
+        assert_eq!(metrics.bytes_sent, 0);
+        assert_eq!(metrics.bytes_received, 0);
+    }
+
+    #[tokio::test]
+    async fn test_session_expiration() {
+        let session = TlsSession::new();
+        assert!(!session.is_session_expired());
+    }
+
+    #[tokio::test]
+    async fn test_data_transfer() {
+        let mut session = TlsSession::new();
+        session.begin_handshake().await.unwrap();
+
+        let data = b"Test data";
+        let mut receive_buffer = vec![0u8; data.len()];
+
+        assert!(session.send_data(data).await.is_ok());
+        assert!(session.receive_data(&mut receive_buffer).await.is_ok());
+
+        let metrics = session.get_metrics();
+        assert!(metrics.bytes_sent > 0);
+        assert!(metrics.bytes_received > 0);
     }
 }

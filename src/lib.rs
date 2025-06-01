@@ -2,6 +2,7 @@ pub mod adds;
 pub mod api;
 pub mod config;
 pub mod etl;
+pub mod data_generator;
 
 // Re-exports
 pub use adds::tls::TlsSession;

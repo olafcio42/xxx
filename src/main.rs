@@ -1,114 +1,102 @@
-use anyhow::Result;
-use PQC_kyber::config::{self, get_formatted_timestamp, get_current_user};
-use PQC_kyber::data_generator::TransactionDataGenerator;
-use PQC_kyber::adds::{secure::SecureSecret, validation::validate_keys, tls::TlsSession};
-use pqcrypto_kyber::kyber1024::*;
-use futures::TryFutureExt;
-use pqcrypto_traits::kem::{PublicKey, SecretKey};
+use PQC_kyber::config::{get_formatted_timestamp, get_current_user};
+use PQC_kyber::adds::{validation::validate_keys, tls::TlsSession};
+use pqcrypto_kyber::kyber1024;
 
-#[actix_web::main]
-async fn main() -> Result<()> {
-    env_logger::init();
-
-
-    println!("=== Starting Kyber PQC Service with API and ETL Pipeline ===");
-    println!("→ Time: {}", get_formatted_timestamp());
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("=== PQC Kyber Cryptography System ===");
+    println!("→ Started at: {}", get_formatted_timestamp());
     println!("→ User: {}", get_current_user());
 
-    // Create API configuration
-    let config = PQC_kyber::api::ApiConfig::default();
-    println!("→ Starting API server on {}:{}", config.host, config.port);
+    // Inicjalizacja sesji TLS
+    let mut tls_session = TlsSession::new();
+    println!("\n=== TLS Session Details ===");
+    println!("→ Session ID: {}", tls_session.get_session_id());
+    println!("→ Initial State: {:?}", tls_session.get_state());
 
-    // Convert the server result to anyhow::Result
-    let server = PQC_kyber::api::start_api_server(config).map_err(anyhow::Error::from);
-    let main_logic = run_main_logic();
+    // Rozpoczęcie handshake
+    println!("\n=== Starting TLS Handshake ===");
+    tls_session.begin_handshake().await?;
+    println!("→ Handshake completed successfully");
+    println!("→ Current State: {:?}", tls_session.get_state());
 
-    // Run both futures concurrently
-    futures::try_join!(server, main_logic)?;
+    // Wyświetlenie metryk sesji
+    let metrics = tls_session.get_metrics();
+    println!("\n=== Session Metrics ===");
+    println!("→ Handshake Attempts: {}", metrics.handshake_attempts);
+    println!("→ Bytes Sent: {}", metrics.bytes_sent);
+    println!("→ Bytes Received: {}", metrics.bytes_received);
 
+    // Test transferu danych
+    let test_data = b"PQC Kyber test message";
+    println!("\n=== Testing Data Transfer ===");
+    println!("→ Sending test data: {:?}", String::from_utf8_lossy(test_data));
+
+    let sent = tls_session.send_data(test_data).await?;
+    println!("→ Sent {} bytes", sent);
+
+    let mut receive_buffer = vec![0u8; test_data.len()];
+    let received = tls_session.receive_data(&mut receive_buffer).await?;
+    println!("→ Received {} bytes", received);
+
+    // Sprawdzenie wygaśnięcia sesji
+    if tls_session.is_session_expired() {
+        println!("\nWarning: Session has expired!");
+    }
+
+    // Generowanie i walidacja kluczy
+    println!("\n=== Generating and Validating Keys ===");
+    let (public_key, secret_key) = kyber1024::keypair();
+    if let Err(e) = validate_keys(&public_key, &secret_key) {
+        println!("→ Key validation failed: {}", e);
+    } else {
+        println!("→ Keys validated successfully");
+    }
+
+    // Zamknięcie sesji
+    println!("\n=== Closing TLS Session ===");
+    tls_session.close().await?;
+    println!("→ Session closed successfully");
+    println!("→ Final State: {:?}", tls_session.get_state());
+
+    // Podsumowanie
+    println!("\n=== Session Summary ===");
+    let final_metrics = tls_session.get_metrics();
+    println!("→ Total Handshake Attempts: {}", final_metrics.handshake_attempts);
+    println!("→ Total Bytes Sent: {}", final_metrics.bytes_sent);
+    println!("→ Total Bytes Received: {}", final_metrics.bytes_received);
+    println!("→ Session Age: {:?}", tls_session.get_session_age());
+
+    println!("\n=== PQC Kyber Shutdown Complete ===");
     Ok(())
 }
 
-async fn run_main_logic() -> Result<()> {
-    println!("\n=== Starting Main Application Logic ===");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pqcrypto_kyber::kyber1024;
 
-    let mut tls_session = TlsSession::new();
-    println!("→ Session ID: {}", tls_session.get_session_id());
+    #[tokio::test]
+    async fn test_main_workflow() -> anyhow::Result<()> {
+        let mut tls_session = TlsSession::new();
 
-    tls_session.begin_handshake()?;
+        // Test podstawowego flow
+        assert!(!tls_session.get_session_id().is_empty());
+        tls_session.begin_handshake().await?;
 
-    //Step 1: Key generation
-    println!("\n[1/4] Generating key pair...");
-    let (public_key, secret_key) = keypair();
-    println!("→ Generated public key ({} bytes)", public_key.as_bytes().len());
-    println!("→ Generated private key ({} bytes)", secret_key.as_bytes().len());
+        let test_data = b"Test data";
+        let sent = tls_session.send_data(test_data).await?;
+        assert_eq!(sent, test_data.len());
 
-    //Step 2: Key validation
-    println!("\n[2/4] Validating keys...");
-    validate_keys(&public_key, &secret_key)?;
-    println!("→ Status: Keys are compatible");
+        let mut receive_buffer = vec![0u8; test_data.len()];
+        let received = tls_session.receive_data(&mut receive_buffer).await?;
+        assert_eq!(received, test_data.len());
 
-    //Step 3: ETL Pipeline testing with data generator
-    println!("\n[3/4] Preparing test data and ETL Pipeline...");
+        // Test walidacji kluczy
+        let (public_key, secret_key) = kyber1024::keypair();
+        assert!(validate_keys(&public_key, &secret_key).is_ok());
 
-    // Initialize data generator
-    let generator = TransactionDataGenerator::new(
-        "data/transactions",
-        &get_formatted_timestamp(),
-        &get_current_user()
-    );
-
-    // Generate and save test data
-    let filename = generator.generate_filename();
-    let file_path = generator.generate_and_save(100_000, &filename)?;
-
-    // Load transactions for processing
-    let transactions = generator.load_transactions(&file_path)?;
-
-    // Create and run pipeline
-    let mut pipeline = PQC_kyber::etl::pipeline::ETLPipeline::new(1000, public_key.clone());
-
-    println!("\n=== Starting Large-Scale Transaction Processing ===");
-    println!("→ Time: {}", get_formatted_timestamp());
-    println!("→ Total transactions to process: {}", transactions.len());
-
-    // Convert and process transactions
-    let etl_transactions: Vec<PQC_kyber::etl::transaction::Transaction> = transactions
-        .into_iter()
-        .map(|td| PQC_kyber::etl::transaction::Transaction::new(
-            td.source_account,
-            td.target_account,
-            td.amount,
-            td.currency
-        ))
-        .collect();
-
-    // Process transactions through pipeline
-    match pipeline.process_transactions(etl_transactions).await {
-        Ok(metrics) => {
-            println!("\n=== ETL Pipeline Results ===");
-            println!("→ Time: {}", get_formatted_timestamp());
-            println!("→ Total transactions processed: {}", metrics.total_transactions);
-            println!("→ Total batches: {}", metrics.total_batches);
-            println!("→ Processing duration: {:?}", metrics.processing_duration);
-            println!("→ Average batch duration: {:?}", metrics.average_batch_duration);
-        },
-        Err(e) => {
-            println!("\n[Error: ETL Pipeline]");
-            println!("→ Error: {}", e);
-        }
+        tls_session.close().await?;
+        Ok(())
     }
-
-    //Step 4: Cleanup
-    println!("\n[4/4] Finalizing TLS session...");
-    tls_session.close()?;
-
-    //Final summary
-    println!("\n=== FINAL SUMMARY ===");
-    println!("→ Time: {}", get_formatted_timestamp());
-    println!("→ User: {}", get_current_user());
-    println!("→ TLS Session: Completed");
-    println!("→ ETL Pipeline: Completed");
-
-    Ok(())
 }
