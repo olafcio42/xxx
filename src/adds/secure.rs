@@ -2,6 +2,8 @@ use pqcrypto_traits::kem::SharedSecret as SharedSecretTrait;
 use secrecy::{Secret, ExposeSecret, Zeroize};
 use zeroize::{ ZeroizeOnDrop};
 use std::fmt;
+use crate::config::{get_formatted_timestamp, get_current_user};
+
 
 /// SecureSecret wrapper for handling sensitive cryptographic material.
 /// Provides secure storage and controlled access to secret data with
@@ -143,8 +145,8 @@ mod tests {
     #[test]
     fn test_metadata() {
         println!("=== SecureSecret Implementation Test ===");
-        println!("→ Time: 2025-05-21 19:46:20");
-        println!("→ User: olafcio42");
+        println!("→ Time: {}", get_formatted_timestamp());
+        println!("→ User: {}", get_current_user());
 
         let secret = SecureSecret::from_bytes(&[1, 2, 3]);
         assert!(!secret.is_empty());

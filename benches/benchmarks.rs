@@ -4,13 +4,13 @@ use rand::RngCore;
 use rsa::{RsaPrivateKey, RsaPublicKey, Pkcs1v15Encrypt, rand_core::OsRng};
 use p256::{SecretKey as P256SecretKey, PublicKey as P256PublicKey, ecdh::EphemeralSecret};
 use chrono::{Utc, DateTime};
+use PQC_kyber::config::{get_formatted_timestamp, get_current_user};
 
-// Dynamic metadata using a function to generate the string
 fn get_benchmark_metadata() -> String {
     format!(
         "\nBenchmark Information:\nDate: {}\nUser: {}\n",
-        Utc::now().format("%Y-%m-%d %H:%M:%S"),
-        "olafcio42"  // Using the provided user login
+        get_formatted_timestamp(),
+        get_current_user()
     )
 }
 

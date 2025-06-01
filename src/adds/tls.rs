@@ -1,7 +1,3 @@
-//TLS Session Management Implementation
-//Author: olafcio42
-//Last Modified: 2025-05-08 18:20:44
-
 use crate::adds::secure::SecureSecret;
 use anyhow::{Context, Result};
 use pqcrypto_kyber::kyber1024::*;
@@ -10,6 +6,8 @@ use std::time::{Instant, Duration};
 use rand::{rngs::OsRng, RngCore};
 use std::fmt;
 use chrono::{DateTime, Utc, TimeZone};
+use crate::config::{get_formatted_timestamp, get_current_user};
+
 
 //TLS Session States
 #[derive(Debug, PartialEq)]
@@ -331,6 +329,6 @@ mod tests {
     #[test]
     fn test_timestamp_format() {
         let session = TlsSession::new();
-        assert_eq!(session.timestamp, "2025-05-06 19:40:11");
+        assert_eq!(session.timestamp, get_formatted_timestamp());
     }
 }

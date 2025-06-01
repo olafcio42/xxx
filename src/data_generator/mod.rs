@@ -5,6 +5,7 @@ use chrono::Utc;
 use csv::{Writer, ReaderBuilder};
 use serde::{Serialize, Deserialize};
 use anyhow::Result;
+use crate::config::{get_formatted_date, get_formatted_timestamp, get_current_user};
 
 pub struct TransactionDataGenerator {
     output_dir: String,
@@ -111,7 +112,7 @@ impl TransactionDataGenerator {
     pub fn generate_filename(&self) -> String {
         let date = self.current_timestamp.split_whitespace()
             .next()
-            .unwrap_or("2025-06-01")
+            .unwrap_or(&get_formatted_date())
             .replace("-", "");
         format!("transactions_{}.csv", date)
     }
