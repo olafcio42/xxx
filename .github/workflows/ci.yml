@@ -1,47 +1,52 @@
-#Rust CI/CD Pipeline
-#This workflow runs tests for a Rust project on push to main and pull requests
+# Extended CI/CD Pipeline for Post-Quantum Cryptography (PQC)
+# This workflow integrates PQC libraries (e.g., liboqs) and runs tests specific to quantum-resistant algorithms.
 
-name: Rust CI
+name: PQC Integration CI
 
-#Defines when the workflow will run
+# Defines when the workflow will run
 on:
   push:
-    branches: [ main ]  #Triggers on pushes to main branch
+    branches: [ main ]  # Triggers on pushes to the main branch
   pull_request:
-    branches: [ main ]  #Triggers on PRs targeting main branch
+    branches: [ main ]  # Triggers on pull requests targeting the main branch
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest  #Uses latest Ubuntu runner
-    
+  pqc-tests:
+    name: Run PQC Tests
+    runs-on: ubuntu-latest  # Uses the latest Ubuntu runner
+
     steps:
-      #Step 1: Check out the repository code
+      # Step 1: Check out the repository code
       - name: Checkout repository
         uses: actions/checkout@v3
-      
-      #Step 2: Install Rust toolchain
-      #Uses actions-rs/toolchain to set up Rust with minimal profile for faster installation
+
+      # Step 2: Install Rust toolchain
+      # Uses actions-rs/toolchain to set up Rust with minimal profile for faster installation
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal  #Minimal profile for faster setup
-          toolchain: stable #Uses stable Rust version
-      
-      #Step 3: Run cargo test
-      #Executes all tests in the project
-      - name: Run tests
-        run: cargo test
+          profile: minimal  # Minimal profile for faster setup
+          toolchain: stable # Uses stable Rust version
 
-#This workflow performs:
-#1. Triggers on pushes to main branch and pull requests
-#2. Sets up a Ubuntu environment
-#3. Checks out the repository
-#4. Installs Rust toolchain with minimal profile
-#5. Runs all tests using cargo test
+      # Step 3: Install PQC Library (liboqs)
+      # Sets up liboqs for testing PQC algorithms
+      - name: Install liboqs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liboqs-dev
 
-#Key features:
-#- Uses stable Rust toolchain
-#- Minimal profile for faster CI
-#- Automated testing on both push and PR events
-#- Clean and efficient setup process
+      # Step 4: Run cargo tests for PQC integration
+      # Executes tests specific to PQC algorithms
+      - name: Run PQC tests
+        run: cargo test --features pqc
+
+      # Step 5: Perform benchmarks for PQC algorithms
+      # Measures the performance of PQC algorithms
+      - name: Run PQC benchmarks
+        run: cargo bench --features pqc
+
+# Key Features:
+# - Integration of liboqs library for PQC
+# - Automated testing of quantum-resistant algorithms
+# - Benchmarking for performance analysis
+# - Clean and efficient setup for CI/CD pipeline
