@@ -122,7 +122,6 @@ impl Default for DummySharedSecret {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
     const TEST_KEY_ID: &str = "test-key";
 

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use crate::config;
 use crate::etl::transaction::Transaction;
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,22 @@ pub struct ValidationCache {
     max_size: usize,
 }
 
+impl ValidationResult {
+    pub fn new() -> Self {
+        Self {
+            is_valid: true,
+            errors: Vec::new(),
+            timestamp: config::get_formatted_timestamp(),
+            validator: config::get_current_user(),
+        }
+    }
+
+    pub fn add_error(&mut self, error: ValidationError) {
+        self.is_valid = false;
+        self.errors.push(error);
+    }
+}
+
 impl ValidationCache {
     pub fn new(max_size: usize) -> Self {
         Self {
@@ -36,29 +53,26 @@ impl ValidationCache {
     pub fn validate(&self, transaction: &Transaction) -> ValidationResult {
         let key = self.create_cache_key(transaction);
 
-        // Check cache
-        let mut result = if let Some(&is_valid) = self.cache.read().get(&key) {
-            ValidationResult {
+        // Sprawdź cache
+        if let Some(&is_valid) = self.cache.read().get(&key) {
+            return ValidationResult {
                 is_valid,
                 errors: vec![],
-                timestamp: crate::config::get_formatted_timestamp(),
-                validator: crate::config::get_current_user(),
-            }
-        } else {
-            self.perform_validation(transaction)
-        };
-
-        // Update cache
-        if !self.cache.read().contains_key(&key) {
-            let mut cache = self.cache.write();
-            if cache.len() >= self.max_size {
-                cache.clear();
-            }
-            cache.insert(key, result.is_valid);
+                timestamp: config::get_formatted_timestamp(),
+                validator: config::get_current_user(),
+            };
         }
 
-        result.timestamp = crate::config::get_formatted_timestamp();
-        result.validator = crate::config::get_current_user();
+        // Wykonaj walidację
+        let result = self.perform_validation(transaction);
+
+        // Zaktualizuj cache
+        let mut cache = self.cache.write();
+        if cache.len() >= self.max_size {
+            cache.clear();
+        }
+        cache.insert(key, result.is_valid);
+
         result
     }
 
@@ -73,31 +87,26 @@ impl ValidationCache {
     }
 
     fn perform_validation(&self, transaction: &Transaction) -> ValidationResult {
-        let mut result = ValidationResult {
-            is_valid: true,
-            errors: Vec::new(),
-            timestamp: crate::config::get_formatted_timestamp(),
-            validator: crate::config::get_current_user(),
-        };
+        let mut result = ValidationResult::new();
 
+        // Walidacja źródłowego konta
         if transaction.source.is_empty() || !self.validate_account_format(&transaction.source) {
-            result.is_valid = false;
-            result.errors.push(ValidationError::InvalidSource);
+            result.add_error(ValidationError::InvalidSource);
         }
 
+        // Walidacja docelowego konta
         if transaction.target.is_empty() || !self.validate_account_format(&transaction.target) {
-            result.is_valid = false;
-            result.errors.push(ValidationError::InvalidTarget);
+            result.add_error(ValidationError::InvalidTarget);
         }
 
+        // Walidacja kwoty
         if transaction.amount <= 0.0 {
-            result.is_valid = false;
-            result.errors.push(ValidationError::InvalidAmount);
+            result.add_error(ValidationError::InvalidAmount);
         }
 
+        // Walidacja waluty
         if !self.validate_currency(&transaction.currency) {
-            result.is_valid = false;
-            result.errors.push(ValidationError::InvalidCurrency);
+            result.add_error(ValidationError::InvalidCurrency);
         }
 
         result
@@ -109,5 +118,64 @@ impl ValidationCache {
 
     fn validate_currency(&self, currency: &str) -> bool {
         matches!(currency, "USD" | "EUR" | "PLN" | "GBP")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validation_cache() {
+        let cache = ValidationCache::new(1000);
+
+        let valid_transaction = Transaction::new(
+            "PL12345678".to_string(),
+            "PL87654321".to_string(),
+            100.0,
+            "PLN".to_string()
+        );
+
+        let result = cache.validate(&valid_transaction);
+        assert!(result.is_valid);
+        assert!(result.errors.is_empty());
+        assert!(!result.timestamp.is_empty());
+        assert_eq!(result.validator, "olafcio42");
+    }
+
+    #[test]
+    fn test_invalid_transaction() {
+        let cache = ValidationCache::new(1000);
+
+        let invalid_transaction = Transaction::new(
+            "".to_string(),
+            "PL87654321".to_string(),
+            -100.0,
+            "XXX".to_string()
+        );
+
+        let result = cache.validate(&invalid_transaction);
+        assert!(!result.is_valid);
+        assert!(!result.errors.is_empty());
+        assert!(result.errors.iter().any(|e| matches!(e, ValidationError::InvalidSource)));
+        assert!(result.errors.iter().any(|e| matches!(e, ValidationError::InvalidAmount)));
+        assert!(result.errors.iter().any(|e| matches!(e, ValidationError::InvalidCurrency)));
+    }
+
+    #[test]
+    fn test_cache_size_limit() {
+        let cache = ValidationCache::new(2);
+
+        for i in 0..5 {
+            let transaction = Transaction::new(
+                format!("PL{:08}", i),
+                "PL87654321".to_string(),
+                100.0,
+                "PLN".to_string()
+            );
+            cache.validate(&transaction);
+        }
+
+        assert_eq!(cache.cache.read().len(), 1);
     }
 }

@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
-use uuid::{uuid, Uuid};
-use crate::config::get_formatted_timestamp;
+use uuid::Uuid;
+use crate::config;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
@@ -16,14 +16,14 @@ pub struct Transaction {
 impl Transaction {
     pub fn new(source: String, target: String, amount: f64, currency: String) -> Self {
         Self {
-            // Używamy makra uuid! do generowania statycznego UUID
-            id: format!("TX_{}", uuid!("67e55044-10b1-426f-9247-bb680e5fe0c8")),
+            // Użyjmy uuid::Uuid::from_u128() zamiast new_v4()
+            id: format!("TX_{}", Uuid::from_u128(42)),
             source,
             target,
             amount,
             currency,
-            timestamp: get_formatted_timestamp(),
-            created_by: crate::config::get_current_user(),
+            timestamp: config::get_formatted_timestamp(),
+            created_by: config::get_current_user(),
         }
     }
 
@@ -32,5 +32,47 @@ impl Transaction {
             && !self.target.is_empty()
             && self.amount > 0.0
             && !self.currency.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transaction_creation() {
+        let tx = Transaction::new(
+            "PL12345678".to_string(),
+            "PL87654321".to_string(),
+            100.0,
+            "PLN".to_string()
+        );
+
+        assert!(tx.id.starts_with("TX_"));
+        assert_eq!(tx.source, "PL12345678");
+        assert_eq!(tx.target, "PL87654321");
+        assert_eq!(tx.amount, 100.0);
+        assert_eq!(tx.currency, "PLN");
+        assert!(!tx.timestamp.is_empty());
+        assert_eq!(tx.created_by, "olafcio42");
+    }
+
+    #[test]
+    fn test_transaction_validation() {
+        let valid_tx = Transaction::new(
+            "PL12345678".to_string(),
+            "PL87654321".to_string(),
+            100.0,
+            "PLN".to_string()
+        );
+        assert!(valid_tx.validate());
+
+        let invalid_tx = Transaction::new(
+            "".to_string(),
+            "PL87654321".to_string(),
+            -100.0,
+            "".to_string()
+        );
+        assert!(!invalid_tx.validate());
     }
 }

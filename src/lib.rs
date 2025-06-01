@@ -3,13 +3,12 @@ pub mod api;
 pub mod config;
 pub mod etl;
 
-pub use adds::{
-    tls::TlsSession,
-    validation::validate_keys,
-};
-
+// Re-exports
+pub use adds::tls::TlsSession;
+pub use adds::validation::validate_keys;
 pub use etl::{
     transaction::Transaction,
     batch::TransactionBatch,
     pipeline::ETLPipeline,
+    validation::{ValidationCache, ValidationResult, ValidationError},
 };

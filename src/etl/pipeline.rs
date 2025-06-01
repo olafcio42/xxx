@@ -78,7 +78,7 @@ impl ETLPipeline {
         let mut processed = 0;
         let mut failed = 0;
 
-        while let Some(mut transaction) = rx.recv().await {
+        while let Some(transaction) = rx.recv().await {
             if transaction.validate() {
                 processed += 1;
                 self.processed_count += 1;

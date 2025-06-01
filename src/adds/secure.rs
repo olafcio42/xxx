@@ -4,7 +4,6 @@ use zeroize::{ ZeroizeOnDrop};
 use std::fmt;
 use crate::config::{get_formatted_timestamp, get_current_user};
 
-
 /// SecureSecret wrapper for handling sensitive cryptographic material.
 /// Provides secure storage and controlled access to secret data with
 /// automatic memory zeroing when dropped.
