@@ -3,33 +3,6 @@
 version = 4
 
 [[package]]
-name = "PQC_kyber"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "criterion",
- "csv",
- "futures",
- "indicatif",
- "once_cell",
- "p256",
- "parking_lot",
- "pqcrypto-kyber",
- "pqcrypto-traits",
- "rand 0.9.1",
- "rand_core 0.9.3",
- "rsa",
- "secrecy",
- "serde",
- "tempfile",
- "thiserror",
- "tokio",
- "uuid",
- "zeroize",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1002,6 +975,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
  "zerocopy",
+]
+
+[[package]]
+name = "pqc_kyber"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "criterion",
+ "csv",
+ "futures",
+ "indicatif",
+ "once_cell",
+ "p256",
+ "parking_lot",
+ "pqcrypto-kyber",
+ "pqcrypto-traits",
+ "rand 0.9.1",
+ "rand_core 0.9.3",
+ "rsa",
+ "secrecy",
+ "serde",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "uuid",
+ "zeroize",
 ]
 
 [[package]]
