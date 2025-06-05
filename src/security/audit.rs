@@ -58,8 +58,8 @@ impl Drop for SecureKeyPair {
 impl SecurityAuditMetrics {
     pub fn new() -> Self {
         SecurityAuditMetrics {
-            timestamp: get_formatted_timestamp(), // "2025-06-05 06:12:11"
-            user: get_current_user(),            // "olafcio42"
+            timestamp: get_formatted_timestamp(),
+            user: get_current_user(),
             memory_security_checks: Vec::new(),
             key_security_checks: Vec::new(),
             protocol_security_checks: Vec::new(),

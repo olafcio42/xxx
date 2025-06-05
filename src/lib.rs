@@ -3,8 +3,9 @@ pub mod api;
 pub mod config;
 pub mod etl;
 pub mod data_generator;
-pub mod tests;   // This will be for our test modules
-pub mod security;  // Add this line
+pub mod tests;
+pub mod security;
+pub mod analysis;
 
 
 // Re-exports
