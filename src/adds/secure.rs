@@ -1,7 +1,7 @@
 use pqcrypto_traits::kem::SharedSecret as SharedSecretTrait;
 use secrecy::{Secret, ExposeSecret, zeroize::Zeroize};
 use std::fmt;
-use crate::config::{get_formatted_timestamp, get_current_user};
+
 
 /// SecureSecret wrapper for handling sensitive cryptographic material.
 /// Provides secure storage and controlled access to secret data with
@@ -95,7 +95,7 @@ impl Eq for SecureSecret {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::mem;
+    use crate::config::{get_formatted_timestamp, get_current_user};
 
     #[test]
     fn test_secure_secret_creation() {
@@ -122,8 +122,8 @@ mod tests {
 
     #[test]
     fn test_memory_layout() {
-        assert!(mem::align_of::<SecureSecret>() >= mem::align_of::<u8>());
-        assert!(mem::size_of::<SecureSecret>() > 0);
+        assert!(align_of::<SecureSecret>() >= align_of::<u8>());
+        assert!(size_of::<SecureSecret>() > 0);
     }
 
     #[test]
