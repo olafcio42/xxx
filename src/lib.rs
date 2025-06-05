@@ -3,6 +3,9 @@ pub mod api;
 pub mod config;
 pub mod etl;
 pub mod data_generator;
+pub mod tests;   // This will be for our test modules
+pub mod security;  // Add this line
+
 
 // Re-exports
 pub use adds::tls::TlsSession;

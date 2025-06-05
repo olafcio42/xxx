@@ -6,7 +6,7 @@ pub struct SystemConfig {
     pub user: String,
 }
 
-// Globalna konfiguracja systemu
+// Global system configuration
 pub static SYSTEM_CONFIG: Lazy<Mutex<SystemConfig>> = Lazy::new(|| {
     Mutex::new(SystemConfig {
         user: String::from("olafcio42"),
