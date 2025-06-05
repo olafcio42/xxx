@@ -7,11 +7,11 @@ use crate::config;
 use uuid::Uuid;
 use futures::executor::block_on;
 
-// Stałe dla TLS
+// TLS Constants
 #[allow(dead_code)]
 const TLS_VERSION: &str = "1.3";
 const MAX_HANDSHAKE_ATTEMPTS: u32 = 3;
-const SESSION_TIMEOUT_SECS: i64 = 3600; // 1 godzina
+const SESSION_TIMEOUT_SECS: i64 = 3600; // 1 hour
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TlsState {
@@ -117,7 +117,7 @@ impl TlsSession {
         self.state = TlsState::Handshaking;
         metrics.update_activity();
 
-        // Symulacja handshake
+        // Handshake simulation
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         if self.perform_handshake().await? {
@@ -130,8 +130,8 @@ impl TlsSession {
     }
 
     async fn perform_handshake(&self) -> Result<bool> {
-        // Tutaj będzie właściwa implementacja handshake
-        // Na razie zwracamy true dla symulacji
+        // Actual handshake implementation will go here
+        // Currently returning true for simulation purposes
         Ok(true)
     }
 
@@ -144,7 +144,7 @@ impl TlsSession {
         metrics.bytes_sent += data.len() as u64;
         metrics.update_activity();
 
-        // Symulacja wysyłania danych
+        // Data sending simulation
         Ok(data.len())
     }
 
@@ -157,7 +157,7 @@ impl TlsSession {
         metrics.bytes_received += buffer.len() as u64;
         metrics.update_activity();
 
-        // Symulacja odbierania danych
+        // Data receiving simulation
         Ok(buffer.len())
     }
 
@@ -179,7 +179,7 @@ impl TlsSession {
 impl Drop for TlsSession {
     fn drop(&mut self) {
         if self.state != TlsState::Closed {
-            // Próbujemy zamknąć sesję, ignorujemy błędy
+            // Attempt to close the session, ignoring any errors
             let _ = block_on(self.close());
         }
     }

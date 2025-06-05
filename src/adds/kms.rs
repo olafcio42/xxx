@@ -76,6 +76,11 @@ impl DummySharedSecret {
 
 /// Implementation of the SharedSecret trait for DummySharedSecret
 impl SharedSecret for DummySharedSecret {
+    /// Returns the secret data as a byte slice
+    fn as_bytes(&self) -> &[u8] {
+        &self.data
+    }
+
     /// Creates a new instance from raw bytes
     /// Returns error if input length is invalid
     fn from_bytes(bytes: &[u8]) -> std::result::Result<Self, pqcrypto_traits::Error>
@@ -103,11 +108,6 @@ impl SharedSecret for DummySharedSecret {
             });
 
         Ok(Self { data, timestamp })
-    }
-
-    /// Returns the secret data as a byte slice
-    fn as_bytes(&self) -> &[u8] {
-        &self.data
     }
 }
 

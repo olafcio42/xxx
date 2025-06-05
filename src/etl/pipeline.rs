@@ -73,8 +73,7 @@ impl ETLPipeline {
         //Process results with progress bar
         let pb = ProgressBar::new(transactions.len() as u64);
         pb.set_style(ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} | {percent}% | {msg}")
-            .unwrap()
+            .template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} | {percent}% | {msg}")?
             .progress_chars("█▇▆▅▄▃▂▁  "));
 
         let mut processed = 0;
