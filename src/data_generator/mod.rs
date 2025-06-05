@@ -1,11 +1,9 @@
-use std::fs::{File, create_dir_all};
-use std::io::{Write, BufReader, BufRead};
+use std::fs::{ create_dir_all};
 use std::path::Path;
-use chrono::Utc;
 use csv::{Writer, ReaderBuilder};
 use serde::{Serialize, Deserialize};
 use anyhow::Result;
-use crate::config::{get_formatted_date, get_formatted_timestamp, get_current_user};
+use crate::config::{get_formatted_date};
 
 pub struct TransactionDataGenerator {
     output_dir: String,
