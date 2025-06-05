@@ -5,4 +5,5 @@ pub mod metrics;     //Performance and operational metrics
 pub mod pipeline;    //ETL pipeline implementation
 
 //Private modules
+#[cfg(test)]
 mod etl_tests;      //Internal testing utilities
