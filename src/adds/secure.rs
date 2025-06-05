@@ -64,8 +64,10 @@ impl SecureSecret {
 // Manual implementation of Zeroize
 impl Zeroize for SecureSecret {
     fn zeroize(&mut self) {
-        // The underlying Secret<Vec<u8>> will handle zeroization
-        let mut vec = self.0.expose_secret().to_vec();
+        // Get mutable access to the underlying vector and zeroize it directly
+        let vec = unsafe {
+            &mut *(self.0.expose_secret() as *const Vec<u8> as *mut Vec<u8>)
+        };
         vec.zeroize();
     }
 }

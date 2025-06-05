@@ -8,6 +8,7 @@ use uuid::Uuid;
 use futures::executor::block_on;
 
 // Stałe dla TLS
+#[allow(dead_code)]
 const TLS_VERSION: &str = "1.3";
 const MAX_HANDSHAKE_ATTEMPTS: u32 = 3;
 const SESSION_TIMEOUT_SECS: i64 = 3600; // 1 godzina
@@ -62,6 +63,7 @@ pub struct TlsSession {
     metrics: Arc<RwLock<TlsMetrics>>,
     session_id: String,
     created_at: DateTime<Utc>,
+    #[allow(dead_code)]
     secret: SecureSecret,
 }
 

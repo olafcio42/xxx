@@ -18,7 +18,9 @@ use crate::config::{get_formatted_timestamp, get_current_user};
 //Main ETL pipeline for processing transactions
 pub struct ETLPipeline {
     batch_size: usize,
+    #[allow(dead_code)]
     current_batch: TransactionBatch,
+    #[allow(dead_code)]
     public_key: Box<dyn PublicKey>,
     processed_count: usize,
     failed_count: usize,
