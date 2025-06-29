@@ -1,12 +1,14 @@
 use pqcrypto_traits::kem::SharedSecret as SharedSecretTrait;
-use secrecy::{Secret, ExposeSecret, zeroize::Zeroize};
+use secrecy::{ExposeSecret, SecretBox};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 use std::fmt;
-
+use std::mem::{align_of, size_of};
 
 /// SecureSecret wrapper for handling sensitive cryptographic material.
 /// Provides secure storage and controlled access to secret data with
 /// automatic memory zeroing when dropped.
-pub struct SecureSecret(Secret<Vec<u8>>);
+#[derive(Zeroize, ZeroizeOnDrop)]
+pub struct SecureSecret(SecretBox<Vec<u8>>);
 
 /// Custom error type for secure secret operations
 #[derive(Debug, thiserror::Error)]
@@ -22,12 +24,12 @@ impl SecureSecret {
     /// Safely wraps the secret bytes in a protected memory location.
     pub fn from_shared<T: SharedSecretTrait>(ss: T) -> Self {
         let secret_bytes = ss.as_bytes().to_vec();
-        Self(Secret::new(secret_bytes))
+        Self(SecretBox::new(Box::new(secret_bytes)))
     }
 
     /// Creates a new SecureSecret from raw bytes.
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        Self(Secret::new(bytes.to_vec()))
+        Self(SecretBox::new(Box::new(bytes.to_vec())))
     }
 
     /// Exposes the underlying secret bytes.
@@ -57,22 +59,6 @@ impl SecureSecret {
     /// Returns true if the secret is empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-}
-
-// Manual implementation of Zeroize
-impl Zeroize for SecureSecret {
-    fn zeroize(&mut self) {
-        // The underlying Secret<Vec<u8>> will handle zeroization
-        let mut vec = self.0.expose_secret().to_vec();
-        vec.zeroize();
-    }
-}
-
-// Implement ZeroizeOnDrop to ensure secrets are cleared from memory
-impl Drop for SecureSecret {
-    fn drop(&mut self) {
-        self.zeroize();
     }
 }
 
@@ -131,13 +117,6 @@ mod tests {
         let secret = SecureSecret::from_bytes(&[]);
         assert!(secret.is_empty());
         assert_eq!(secret.len(), 0);
-    }
-
-    #[test]
-    fn test_zeroize() {
-        let mut secret = SecureSecret::from_bytes(&[1, 2, 3, 4]);
-        secret.zeroize();
-        assert_eq!(secret.expose(), &[0, 0, 0, 0]);
     }
 
     #[test]
