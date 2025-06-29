@@ -1,65 +1,50 @@
 # Extended CI/CD Pipeline for Post-Quantum Cryptography (PQC)
-# This workflow integrates PQC libraries (e.g., liboqs) and runs tests specific to quantum-resistant algorithms.
+name: PQC Integration CI
 
-name: ci
-
-# Defines when the workflow will run
 on:
   push:
-    branches: [ main ]  # Triggers on pushes to the main branch
+    branches: [ main ]
   pull_request:
-    branches: [ main ]  # Triggers on pull requests targeting the main branch
+    branches: [ main ]
 
 jobs:
   pqc-tests:
     name: Run PQC Tests
-    runs-on: ubuntu-latest  # Uses the latest Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Install Rust toolchain
-      # Uses actions-rs/toolchain to set up Rust with minimal profile for faster installation
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal  # Minimal profile for faster setup
-          toolchain: stable # Uses stable Rust version
+          profile: minimal
+          toolchain: stable
 
-      # Step 3: Add OQS repository and install dependencies
-      - name: Add OQS repository and dependencies
+      # Updated OQS repository setup
+      - name: Set up OQS repository
         run: |
           sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository ppa:open-quantum-safe/ppa
+          sudo apt-get install -y software-properties-common wget
+          # Download and install OQS repository key
+          sudo mkdir -p /etc/apt/keyrings
+          wget -O - https://openquantumsafe.org/repo/ubuntu/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/oqs.gpg
+          # Add OQS repository
+          echo "deb [signed-by=/etc/apt/keyrings/oqs.gpg] https://openquantumsafe.org/repo/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/oqs.list
           sudo apt-get update
 
-      # Step 4: Install PQC Library (liboqs)
       - name: Install liboqs
-        run: sudo apt-get install -y liboqs-dev
-
-      # Step 5: Verify liboqs installation
-      - name: Verify liboqs installation
         run: |
+          sudo apt-get install -y liboqs-dev
+          # Verify installation
           if ! dpkg -l | grep -q liboqs-dev; then
             echo "liboqs-dev installation failed"
             exit 1
           fi
 
-      # Step 6: Run cargo tests for PQC integration
-      # Executes tests specific to PQC algorithms
       - name: Run PQC tests
         run: cargo test --features pqc
 
-      # Step 7: Perform benchmarks for PQC algorithms
-      # Measures the performance of PQC algorithms
       - name: Run PQC benchmarks
         run: cargo bench --features pqc
-
-# Key Features:
-# - Integration of liboqs library for PQC
-# - Automated testing of quantum-resistant algorithms
-# - Benchmarking for performance analysis
-# - Clean and efficient setup for CI/CD pipeline
