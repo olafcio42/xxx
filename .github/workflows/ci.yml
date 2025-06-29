@@ -1,7 +1,7 @@
 # Extended CI/CD Pipeline for Post-Quantum Cryptography (PQC)
 # This workflow integrates PQC libraries (e.g., liboqs) and runs tests specific to quantum-resistant algorithms.
 
-name: PQC Integration CI
+name: ci
 
 # Defines when the workflow will run
 on:
@@ -28,22 +28,32 @@ jobs:
           profile: minimal  # Minimal profile for faster setup
           toolchain: stable # Uses stable Rust version
 
-      # Step 3: Add OQS repository and install PQC Library (liboqs)
-      - name: Add OQS repository
+      # Step 3: Add OQS repository and install dependencies
+      - name: Add OQS repository and dependencies
         run: |
+          sudo apt-get update
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository ppa:open-quantum-safe/ppa
           sudo apt-get update
 
-      - name: Install liboqs-dev
+      # Step 4: Install PQC Library (liboqs)
+      - name: Install liboqs
         run: sudo apt-get install -y liboqs-dev
 
-      # Step 4: Run cargo tests for PQC integration
+      # Step 5: Verify liboqs installation
+      - name: Verify liboqs installation
+        run: |
+          if ! dpkg -l | grep -q liboqs-dev; then
+            echo "liboqs-dev installation failed"
+            exit 1
+          fi
+
+      # Step 6: Run cargo tests for PQC integration
       # Executes tests specific to PQC algorithms
       - name: Run PQC tests
         run: cargo test --features pqc
 
-      # Step 5: Perform benchmarks for PQC algorithms
+      # Step 7: Perform benchmarks for PQC algorithms
       # Measures the performance of PQC algorithms
       - name: Run PQC benchmarks
         run: cargo bench --features pqc

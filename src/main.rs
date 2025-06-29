@@ -8,26 +8,26 @@ async fn main() -> anyhow::Result<()> {
     println!("→ Started at: {}", get_formatted_timestamp());
     println!("→ User: {}", get_current_user());
 
-    // Inicjalizacja sesji TLS
+    // Initialize TLS session
     let mut tls_session = TlsSession::new();
     println!("\n=== TLS Session Details ===");
     println!("→ Session ID: {}", tls_session.get_session_id());
     println!("→ Initial State: {:?}", tls_session.get_state());
 
-    // Rozpoczęcie handshake
+    // Begin handshake process
     println!("\n=== Starting TLS Handshake ===");
     tls_session.begin_handshake().await?;
     println!("→ Handshake completed successfully");
     println!("→ Current State: {:?}", tls_session.get_state());
 
-    // Wyświetlenie metryk sesji
+    // Display session metrics
     let metrics = tls_session.get_metrics();
     println!("\n=== Session Metrics ===");
     println!("→ Handshake Attempts: {}", metrics.handshake_attempts);
     println!("→ Bytes Sent: {}", metrics.bytes_sent);
     println!("→ Bytes Received: {}", metrics.bytes_received);
 
-    // Test transferu danych
+    // Test data transfer
     let test_data = b"PQC Kyber test message";
     println!("\n=== Testing Data Transfer ===");
     println!("→ Sending test data: {:?}", String::from_utf8_lossy(test_data));
@@ -39,12 +39,12 @@ async fn main() -> anyhow::Result<()> {
     let received = tls_session.receive_data(&mut receive_buffer).await?;
     println!("→ Received {} bytes", received);
 
-    // Sprawdzenie wygaśnięcia sesji
+    // Check session expiration
     if tls_session.is_session_expired() {
         println!("\nWarning: Session has expired!");
     }
 
-    // Generowanie i walidacja kluczy
+    // Generate and validate keys
     println!("\n=== Generating and Validating Keys ===");
     let (public_key, secret_key) = kyber1024::keypair();
     if let Err(e) = validate_keys(&public_key, &secret_key) {
@@ -53,13 +53,13 @@ async fn main() -> anyhow::Result<()> {
         println!("→ Keys validated successfully");
     }
 
-    // Zamknięcie sesji
+    // Close session
     println!("\n=== Closing TLS Session ===");
     tls_session.close().await?;
     println!("→ Session closed successfully");
     println!("→ Final State: {:?}", tls_session.get_state());
 
-    // Podsumowanie
+    // Summary
     println!("\n=== Session Summary ===");
     let final_metrics = tls_session.get_metrics();
     println!("→ Total Handshake Attempts: {}", final_metrics.handshake_attempts);
@@ -80,7 +80,7 @@ mod tests {
     async fn test_main_workflow() -> anyhow::Result<()> {
         let mut tls_session = TlsSession::new();
 
-        // Test podstawowego flow
+        // Test basic flow
         assert!(!tls_session.get_session_id().is_empty());
         tls_session.begin_handshake().await?;
 
@@ -92,7 +92,7 @@ mod tests {
         let received = tls_session.receive_data(&mut receive_buffer).await?;
         assert_eq!(received, test_data.len());
 
-        // Test walidacji kluczy
+        // Test key validation
         let (public_key, secret_key) = kyber1024::keypair();
         assert!(validate_keys(&public_key, &secret_key).is_ok());
 
