@@ -22,29 +22,53 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      # Updated OQS repository setup
-      - name: Set up OQS repository
+      # Build and install liboqs from source
+      - name: Build and install liboqs
         run: |
+          # Install build dependencies
           sudo apt-get update
-          sudo apt-get install -y software-properties-common wget
-          # Download and install OQS repository key
-          sudo mkdir -p /etc/apt/keyrings
-          wget -O - https://openquantumsafe.org/repo/ubuntu/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/oqs.gpg
-          # Add OQS repository
-          echo "deb [signed-by=/etc/apt/keyrings/oqs.gpg] https://openquantumsafe.org/repo/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/oqs.list
-          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
 
-      - name: Install liboqs
-        run: |
-          sudo apt-get install -y liboqs-dev
+          # Clone liboqs repository
+          git clone --depth 1 --branch main https://github.com/open-quantum-safe/liboqs.git
+          
+          # Build and install liboqs
+          cd liboqs
+          mkdir build && cd build
+          cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local ..
+          ninja
+          sudo ninja install
+          
+          # Update library cache
+          sudo ldconfig
+          
           # Verify installation
-          if ! dpkg -l | grep -q liboqs-dev; then
-            echo "liboqs-dev installation failed"
+          if [ ! -f "/usr/local/include/oqs/oqs.h" ]; then
+            echo "liboqs installation failed - header not found"
+            exit 1
+          fi
+          if [ ! -f "/usr/local/lib/liboqs.so" ]; then
+            echo "liboqs installation failed - library not found"
             exit 1
           fi
 
       - name: Run PQC tests
-        run: cargo test --features pqc
+        run: |
+          # Set library path to include liboqs
+          export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+          cargo test --features pqc
 
       - name: Run PQC benchmarks
-        run: cargo bench --features pqc
+        run: |
+          # Set library path to include liboqs
+          export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+          cargo bench --features pqc
+
+      # Optional: Cache the built libraries
+      - name: Cache liboqs
+        uses: actions/cache@v3
+        with:
+          path: |
+            /usr/local/lib/liboqs.so*
+            /usr/local/include/oqs
+          key: ${{ runner.os }}-liboqs-${{ hashFiles('liboqs/**') }}
