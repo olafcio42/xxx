@@ -28,12 +28,15 @@ jobs:
           profile: minimal  # Minimal profile for faster setup
           toolchain: stable # Uses stable Rust version
 
-      # Step 3: Install PQC Library (liboqs)
-      # Sets up liboqs for testing PQC algorithms
-      - name: Install liboqs
+      # Step 3: Add OQS repository and install PQC Library (liboqs)
+      - name: Add OQS repository
         run: |
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:open-quantum-safe/ppa
           sudo apt-get update
-          sudo apt-get install -y liboqs-dev
+
+      - name: Install liboqs-dev
+        run: sudo apt-get install -y liboqs-dev
 
       # Step 4: Run cargo tests for PQC integration
       # Executes tests specific to PQC algorithms
