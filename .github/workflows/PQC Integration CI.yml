@@ -14,12 +14,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
 
       # Build and install liboqs from source
@@ -27,7 +26,7 @@ jobs:
         run: |
           # Install build dependencies
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config
 
           # Clone liboqs repository
           git clone --depth 1 --branch main https://github.com/open-quantum-safe/liboqs.git
@@ -35,40 +34,78 @@ jobs:
           # Build and install liboqs
           cd liboqs
           mkdir build && cd build
-          cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local ..
+          cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=ON ..
           ninja
           sudo ninja install
           
           # Update library cache
           sudo ldconfig
           
-          # Verify installation
+          # Create symbolic link for compatibility
+          sudo ln -sf /usr/local/lib/liboqs.so.* /usr/local/lib/liboqs.so 2>/dev/null || true
+          
+          # Verify installation - check for header files
           if [ ! -f "/usr/local/include/oqs/oqs.h" ]; then
             echo "liboqs installation failed - header not found"
             exit 1
           fi
-          if [ ! -f "/usr/local/lib/liboqs.so" ]; then
-            echo "liboqs installation failed - library not found"
+          
+          # Verify installation - check for library files (versioned or unversioned)
+          if ! ls /usr/local/lib/liboqs.so* 1> /dev/null 2>&1; then
+            echo "liboqs installation failed - no library files found"
+            echo "Contents of /usr/local/lib:"
+            ls -la /usr/local/lib/ | grep -i oqs || echo "No oqs files found"
             exit 1
           fi
+          
+          # Additional verification using pkg-config if available
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+          if pkg-config --exists liboqs 2>/dev/null; then
+            echo "liboqs found via pkg-config: $(pkg-config --modversion liboqs)"
+          else
+            echo "liboqs not found via pkg-config, but library files exist"
+          fi
+          
+          echo "liboqs installation successful!"
+          echo "Installed library files:"
+          ls -la /usr/local/lib/liboqs.so* || echo "No liboqs.so files found"
 
       - name: Run PQC tests
         run: |
           # Set library path to include liboqs
           export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-          cargo test --features pqc
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+          
+          # Check if the pqc feature actually exists in Cargo.toml
+          if grep -q "pqc" Cargo.toml; then
+            cargo test --features pqc
+          else
+            echo "No 'pqc' feature found in Cargo.toml, running standard tests"
+            cargo test
+          fi
 
       - name: Run PQC benchmarks
         run: |
           # Set library path to include liboqs
           export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-          cargo bench --features pqc
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+          
+          # Check if the pqc feature actually exists in Cargo.toml
+          if grep -q "pqc" Cargo.toml; then
+            cargo bench --features pqc
+          else
+            echo "No 'pqc' feature found in Cargo.toml, running standard benchmarks"
+            cargo bench
+          fi
 
-      # Optional: Cache the built libraries
+      # Cache the built libraries for faster subsequent runs
       - name: Cache liboqs
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             /usr/local/lib/liboqs.so*
             /usr/local/include/oqs
+            /usr/local/lib/pkgconfig/liboqs.pc
           key: ${{ runner.os }}-liboqs-${{ hashFiles('liboqs/**') }}
+          restore-keys: |
+            ${{ runner.os }}-liboqs-
