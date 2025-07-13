@@ -8,6 +8,7 @@ pub mod security;
 pub mod analysis;
 mod dilithum;
 mod sphinc;
+mod hsm;
 
 // Re-exports
 pub use adds::tls::TlsSession;
