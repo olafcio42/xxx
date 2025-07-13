@@ -6,6 +6,8 @@ pub mod data_generator;
 pub mod tests;
 pub mod security;
 pub mod analysis;
+mod dilithum;
+mod sphinc;
 
 // Re-exports
 pub use adds::tls::TlsSession;
