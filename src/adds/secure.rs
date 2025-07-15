@@ -2,7 +2,7 @@ use pqcrypto_traits::kem::SharedSecret as SharedSecretTrait;
 use secrecy::{ExposeSecret, SecretBox};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use std::fmt;
-use std::mem::{align_of, size_of};
+use serde::{Serialize, Deserialize};
 
 /// SecureSecret wrapper for handling sensitive cryptographic material.
 /// Provides secure storage and controlled access to secret data with

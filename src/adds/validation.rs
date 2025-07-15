@@ -89,7 +89,7 @@ impl ValidationCache {
         }
 
         // Check cache with TTL validation
-        {
+        let cached_value = {
             let cache = self.cache.read();
             if let Some(entry) = cache.get(&key) {
                 if current_time - entry.timestamp <= self.ttl_seconds {
@@ -100,21 +100,31 @@ impl ValidationCache {
                         stats.hit_rate = (stats.cache_hits as f64 / stats.total_requests as f64) * 100.0;
                     }
 
-                    // Update access count
-                    drop(cache);
-                    let mut cache_write = self.cache.write();
-                    if let Some(entry) = cache_write.get_mut(&key) {
-                        entry.access_count += 1;
-                    }
+                    // Store the value before dropping the cache
+                    Some(entry.value)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
 
-                    return ValidationResult {
-                        is_valid: entry.value,
-                        errors: vec![],
-                        timestamp: crate::config::get_formatted_timestamp(),
-                        validator: crate::config::get_current_user(),
-                    };
+        if let Some(is_valid) = cached_value {
+            // Update access count
+            {
+                let mut cache_write = self.cache.write();
+                if let Some(entry) = cache_write.get_mut(&key) {
+                    entry.access_count += 1;
                 }
             }
+
+            return ValidationResult {
+                is_valid,
+                errors: vec![],
+                timestamp: crate::config::get_formatted_timestamp(),
+                validator: crate::config::get_current_user(),
+            };
         }
 
         // Cache miss - perform validation
