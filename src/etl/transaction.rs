@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
-use crate::config;
+use crate::config::{self, initialize_config};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
@@ -40,6 +40,9 @@ mod tests {
 
     #[test]
     fn test_transaction_creation() {
+        // Initialize config with test user
+        initialize_config(Some("test_user".to_string()));
+
         let tx = Transaction::new(
             "PL12345678".to_string(),
             "PL87654321".to_string(),
@@ -53,7 +56,7 @@ mod tests {
         assert_eq!(tx.amount, 100.0);
         assert_eq!(tx.currency, "PLN");
         assert!(!tx.timestamp.is_empty());
-        assert_eq!(tx.created_by, "olafcio42");
+        assert_eq!(tx.created_by, "test_user");
     }
 
     #[test]
