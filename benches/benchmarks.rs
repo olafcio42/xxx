@@ -1,20 +1,17 @@
 use criterion::{criterion_group, criterion_main, Criterion, black_box};
 use pqcrypto_kyber::kyber1024::*;
-use rand::RngCore;
 use rsa::{RsaPrivateKey, RsaPublicKey, Pkcs1v15Encrypt, rand_core::OsRng};
 use p256::{PublicKey as P256PublicKey, ecdh::EphemeralSecret};
 use statistical::{mean, median, standard_deviation};
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 #[derive(Debug)]
 struct UnifiedBenchmark {
-    // Konfiguracja
     iterations: usize,
     warmup_iterations: usize,
     payload_sizes: Vec<usize>,
     sample_size: usize,
 
-    // Metryki
     times: Vec<f64>,
     memory_samples: Vec<usize>,
     peak_memory: usize,
@@ -32,8 +29,8 @@ impl Default for UnifiedBenchmark {
             times: Vec::new(),
             memory_samples: Vec::new(),
             peak_memory: 0,
-            timestamp: "2025-06-10 21:25:39".to_string(), // Current timestamp
-            user: "olafcio42".to_string(),               // Current user
+            timestamp: pqc_kyber::config::get_formatted_timestamp(),
+            user: pqc_kyber::config::get_current_user(),
         }
     }
 }

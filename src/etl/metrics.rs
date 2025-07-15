@@ -2,9 +2,9 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 
 //Returns current timestamp in formatted string
-fn get_formatted_timestamp() -> String {
-    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
-}
+use crate::config::get_formatted_timestamp;
+
+
 
 //Collects and manages batch processing metrics
 #[derive(Debug, Default, Clone)]
@@ -40,7 +40,7 @@ impl BatchMetrics {
 
         println!("\n[Batch Metrics Update]");
         println!("-> Time: {}", get_formatted_timestamp());
-        println!("-> User: olafcio42");
+        println!("-> User: {}", crate::config::get_current_user());
         println!("-> Total batches: {}", self.total_batches);
         println!("-> Total transactions: {}", self.total_transactions);
         println!("-> Processed transactions: {}", self.processed_transactions);

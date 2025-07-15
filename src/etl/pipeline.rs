@@ -114,7 +114,7 @@ impl ETLPipeline {
 
         println!("\n[ETL Pipeline Results]");
         println!("-> Time: {}", get_formatted_timestamp());
-        println!("-> User: olafcio42");
+        println!("-> User: {}", get_current_user());
         println!("-> Total processed: {}", self.processed_count);
         println!("-> Total failed: {}", self.failed_count);
         println!("-> Duration: {:?}", metrics.processing_duration);
