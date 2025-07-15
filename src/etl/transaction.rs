@@ -16,7 +16,6 @@ pub struct Transaction {
 impl Transaction {
     pub fn new(source: String, target: String, amount: f64, currency: String) -> Self {
         Self {
-            // Użyjmy uuid::Uuid::from_u128() zamiast new_v4()
             id: format!("TX_{}", Uuid::from_u128(42)),
             source,
             target,

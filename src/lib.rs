@@ -6,7 +6,6 @@ pub mod data_generator;
 pub mod tests;
 pub mod security;
 pub mod analysis;
-mod hsm;
 
 // Re-exports
 pub use adds::tls::TlsSession;

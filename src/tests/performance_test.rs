@@ -21,8 +21,8 @@ pub struct PerformanceMetrics {
 impl PerformanceMetrics {
     pub fn new() -> Self {
         PerformanceMetrics {
-            timestamp: get_formatted_timestamp(), // "2025-06-03 20:48:44"
-            user: get_current_user(),            // "olafcio42"
+            timestamp: get_formatted_timestamp(),
+            user: get_current_user(),
             min_latency: Duration::from_secs(999999),
             latency_samples: Vec::new(),
             ..Default::default()

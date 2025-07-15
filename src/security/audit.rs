@@ -49,7 +49,6 @@ struct SecureKeyPair {
 
 impl Drop for SecureKeyPair {
     fn drop(&mut self) {
-        // Implement secure cleanup using the KemSecretKey trait
         let mut secret_bytes = KemSecretKey::as_bytes(&self.secret_key).to_vec();
         secret_bytes.zeroize();
     }

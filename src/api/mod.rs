@@ -7,7 +7,6 @@ pub struct ApiConfig {
 }
 
 pub async fn start_api_server(config: ApiConfig) -> Result<()> {
-    // Podstawowa implementacja
     println!("Starting API server on {}:{}", config.host, config.port);
     Ok(())
 }

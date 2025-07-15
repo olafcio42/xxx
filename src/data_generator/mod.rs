@@ -31,7 +31,6 @@ impl TransactionDataGenerator {
         }
     }
 
-    // Generuje i zapisuje transakcje do pliku CSV
     pub fn generate_and_save(&self, count: usize, filename: &str) -> Result<String> {
         let full_path = self.ensure_output_dir(filename)?;
         let mut writer = Writer::from_path(&full_path)?;
@@ -48,7 +47,6 @@ impl TransactionDataGenerator {
         Ok(full_path)
     }
 
-    // Wczytuje transakcje z pliku CSV
     pub fn load_transactions(&self, filepath: &str) -> Result<Vec<Transaction>> {
         let mut reader = ReaderBuilder::new()
             .has_headers(true)
@@ -64,7 +62,6 @@ impl TransactionDataGenerator {
         Ok(transactions)
     }
 
-    // Generuje określoną liczbę transakcji
     fn generate_transactions(&self, count: usize) -> Vec<Transaction> {
         let currencies = ["PLN", "EUR", "USD", "GBP", "CHF"];
         let mut transactions = Vec::with_capacity(count);
@@ -97,7 +94,6 @@ impl TransactionDataGenerator {
         transactions
     }
 
-    // Tworzy katalog wyjściowy jeśli nie istnieje
     fn ensure_output_dir(&self, filename: &str) -> Result<String> {
         let path = Path::new(&self.output_dir);
         if !path.exists() {
@@ -106,7 +102,6 @@ impl TransactionDataGenerator {
         Ok(path.join(filename).to_string_lossy().to_string())
     }
 
-    // Generuje nazwę pliku na podstawie timestampu
     pub fn generate_filename(&self) -> String {
         let date = self.current_timestamp.split_whitespace()
             .next()
