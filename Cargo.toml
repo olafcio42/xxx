@@ -3,8 +3,13 @@ name = "pqc_kyber"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[features]
+default = []
+pqc = []
+web-demo = []
+metrics = []
 
+[dependencies]
 pqcrypto-kyber = "0.8.1"
 pqcrypto-traits = "0.3.5"
 rand = "0.9.1"
@@ -50,4 +55,3 @@ lto = true
 codegen-units = 1
 panic = "abort"
 opt-level = 3
-
