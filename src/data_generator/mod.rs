@@ -3,12 +3,10 @@ use std::path::Path;
 use csv::{Writer, ReaderBuilder};
 use serde::{Serialize, Deserialize};
 use anyhow::Result;
-use crate::config::{get_formatted_date};
+use crate::config::{get_formatted_timestamp, get_formatted_date, get_current_user};
 
 pub struct TransactionDataGenerator {
     output_dir: String,
-    current_timestamp: String,
-    current_user: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,11 +21,9 @@ pub struct Transaction {
 }
 
 impl TransactionDataGenerator {
-    pub fn new(output_dir: &str, timestamp: &str, user: &str) -> Self {
+    pub fn new(output_dir: &str) -> Self {
         Self {
             output_dir: output_dir.to_string(),
-            current_timestamp: timestamp.to_string(),
-            current_user: user.to_string(),
         }
     }
 
@@ -66,6 +62,9 @@ impl TransactionDataGenerator {
         let currencies = ["PLN", "EUR", "USD", "GBP", "CHF"];
         let mut transactions = Vec::with_capacity(count);
 
+        let current_timestamp = get_formatted_timestamp();
+        let current_user = get_current_user();
+
         for i in 0..count {
             let currency = currencies[i % currencies.len()];
             let amount = 100.0 + (i as f64 % 9900.0);
@@ -78,7 +77,7 @@ impl TransactionDataGenerator {
 
             transactions.push(Transaction {
                 transaction_id: format!("BANK/{}/{:06}",
-                                        self.current_timestamp.split_whitespace().next().unwrap_or("2025/06/01")
+                                        current_timestamp.split_whitespace().next().unwrap_or(&get_formatted_date())
                                             .replace("-", "/"),
                                         i + 1
                 ),
@@ -86,8 +85,8 @@ impl TransactionDataGenerator {
                 target_account,
                 amount,
                 currency: currency.to_string(),
-                timestamp: self.current_timestamp.clone(),
-                created_by: self.current_user.clone(),
+                timestamp: current_timestamp.clone(),
+                created_by: current_user.clone(),
             });
         }
 
@@ -103,7 +102,7 @@ impl TransactionDataGenerator {
     }
 
     pub fn generate_filename(&self) -> String {
-        let date = self.current_timestamp.split_whitespace()
+        let date = get_formatted_timestamp().split_whitespace()
             .next()
             .unwrap_or(&get_formatted_date())
             .replace("-", "");
@@ -115,24 +114,23 @@ impl TransactionDataGenerator {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use crate::config::initialize_config;
 
     #[test]
     fn test_transaction_generation_and_loading() -> Result<()> {
+        initialize_config(Some("test_user".to_string()));
+
         let temp_dir = tempdir()?;
         let temp_path = temp_dir.path().to_string_lossy().to_string();
 
-        let generator = TransactionDataGenerator::new(
-            &temp_path,
-            "2025-06-01 07:19:41",
-            "test_user"
-        );
+        let generator = TransactionDataGenerator::new(&temp_path);
 
         let filename = generator.generate_filename();
         let file_path = generator.generate_and_save(100, &filename)?;
         let loaded_transactions = generator.load_transactions(&file_path)?;
 
         assert_eq!(loaded_transactions.len(), 100);
-        assert!(loaded_transactions[0].transaction_id.starts_with("BANK/2025/06/01"));
+        assert!(loaded_transactions[0].transaction_id.starts_with("BANK/"));
         assert!(loaded_transactions[0].source_account.starts_with("PL"));
         assert_eq!(loaded_transactions[0].created_by, "test_user");
 
