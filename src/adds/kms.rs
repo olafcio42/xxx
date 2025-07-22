@@ -98,12 +98,8 @@ impl SharedSecret for DummySharedSecret {
         let mut data = [0u8; SHARED_SECRET_LENGTH];
         data.copy_from_slice(bytes);
 
-        // Use unwrap here as time errors should be extremely rare in practice
-        // and BadLength is the only error type available in pqcrypto_traits::Error
         let timestamp = Self::get_current_timestamp()
             .unwrap_or_else(|_| {
-                // Fallback to a default timestamp if there's an error
-                // This is safe as UNIX_EPOCH is a known good value
                 UNIX_EPOCH.elapsed().unwrap_or_default().as_secs()
             });
 
@@ -194,6 +190,6 @@ mod tests {
         let now = DummySharedSecret::get_current_timestamp()
             .expect("Failed to get current time");
         assert!(secret.timestamp <= now);
-        assert!(now - secret.timestamp < 2); // Allow 2 seconds difference
+        assert!(now - secret.timestamp < 2);
     }
 }

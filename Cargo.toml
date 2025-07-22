@@ -1,15 +1,10 @@
 [package]
 name = "pqc_kyber"
 version = "0.1.0"
-edition = "2021"
-
-[features]
-default = []
-pqc = []
-web-demo = []
-metrics = []
+edition = "2024"
 
 [dependencies]
+
 pqcrypto-kyber = "0.8.1"
 pqcrypto-traits = "0.3.5"
 rand = "0.9.1"
@@ -20,7 +15,6 @@ serde = { version = "1.0", features = ["derive"] }
 indicatif = "0.17.7"
 p256 = { version = "0.13.2", features = ["ecdh"] }
 csv = "1.3.1"
-
 once_cell = "1.8"
 uuid = { version = "1.0", features = ["v4"] }
 zeroize = { version = "1.5", features = ["zeroize_derive"] }
@@ -56,3 +50,4 @@ lto = true
 codegen-units = 1
 panic = "abort"
 opt-level = 3
+

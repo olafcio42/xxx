@@ -49,8 +49,8 @@ pub enum RiskLevel {
 impl ComparativeAnalysis {
     pub fn new() -> Self {
         ComparativeAnalysis {
-            timestamp: get_formatted_timestamp(), // "2025-06-05 06:21:31"
-            user: get_current_user(),            // "olafcio42"
+            timestamp: get_formatted_timestamp(),
+            user: get_current_user(),
             kyber_metrics: AlgorithmMetrics::default_kyber(),
             rsa_metrics: AlgorithmMetrics::default_rsa(),
             ecc_metrics: AlgorithmMetrics::default_ecc(),
@@ -117,7 +117,7 @@ impl AlgorithmMetrics {
             name: String::from("Kyber-1024"),
             key_generation_time: Duration::from_micros(850),
             operation_time: Duration::from_micros(957),
-            key_size: 1632, // Kyber-1024 public key size
+            key_size: 1632,
             security_level: SecurityLevel::PostQuantum256,
             operations_per_second: 1043.02,
             memory_usage: 2048 * 1024, // 2MB
@@ -129,7 +129,7 @@ impl AlgorithmMetrics {
             name: String::from("RSA-3072"),
             key_generation_time: Duration::from_millis(250),
             operation_time: Duration::from_millis(2),
-            key_size: 384, // RSA-3072 public key size
+            key_size: 384, 
             security_level: SecurityLevel::Classical128,
             operations_per_second: 500.0,
             memory_usage: 4096 * 1024, // 4MB
