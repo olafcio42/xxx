@@ -1,22 +1,12 @@
-pub mod adds;
-pub mod api;
-pub mod config;
-pub mod etl;
-pub mod data_generator;
-pub mod tests;
-pub mod security;
-pub mod analysis;
+pub mod kyber768;
+pub mod kyber1024;
+pub mod utils;
 
-// Re-exports
-pub use adds::tls::TlsSession;
-pub use adds::validation::{
-    ValidationCache,
-    ValidationResult,
-    ValidationError,
-    validate_keys
-};
-pub use etl::{
-    transaction::Transaction,
-    batch::TransactionBatch,
-    pipeline::ETLPipeline,
-};
+// Re-eksporty głównych komponentów
+pub use kyber768::kem as kem768;
+pub use kyber1024::kem as kem1024;
+pub use utils::{entropy, encoding, validation};
+
+// Stałe konfiguracyjne
+pub const KYBER_768_KEY_SIZE: usize = 1088;
+pub const KYBER_1024_KEY_SIZE: usize = 1568;
